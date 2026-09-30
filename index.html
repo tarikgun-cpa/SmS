@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spool Pazar & Müşteri Takip - Veri Bankası</title>
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="Logo.ico" type="image/x-icon">
+    <link rel="icon" href="Logo.ico" type="image/x-icon">
+
+    <style>
+    @media print {
+        body * { visibility: hidden !important; }
+        #tab-operations, #tab-operations * { visibility: visible !important; }
+        #tab-operations { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+        header, aside, sidebar, button, input, select, .no-print, nav { display: none !important; }
+        .tab-content { display: block !important; }
+        table { width: 100% !important; border-collapse: collapse !important; margin-top: 15px !important; }
+        th, td { border: 1px solid #94a3b8 !important; padding: 8px 10px !important; font-size: 11px !important; color: #000 !important; }
+        th { 
+            background-color: #f1f5f9 !important; 
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact; 
+        }
+    }
+</style>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase App, Firestore & Auth (v10 JS SDK Compatibility Layer) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- TOP HEADER -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+        <div class="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img src="Logo.jpg" alt="Spool CRM Logo" class="h-10 w-auto rounded-lg border border-slate-700 object-cover shadow-sm">
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide flex items-center gap-2">
+                        Spool Marketing System
+                    </h1>
+                    <p class="text-[11px] text-slate-400">Centrifugal Casting</p>
+                </div>
+            </div>
+
+            <!-- Top Actions & Badges (Sağa Hizalı) -->
+            <div class="flex items-center gap-2.5 ml-auto">
+                <button onclick="openAlertsModal()" class="relative p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition" title="Geri Dönüş Bekleyenler">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    <span id="alert-badge-count" class="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center hidden">0</span>
+                </button>
+
+                <button onclick="openBulkUploadModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Toplu Yükle</span>
+                </button>
+
+                <button onclick="openCompanyModal()" class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Yeni Firma</span>
+                </button>
+
+                <button onclick="logoutUser()" class="px-3 py-2 rounded-lg text-xs font-semibold border border-slate-700 bg-slate-800 text-rose-400 hover:bg-slate-700 hover:text-rose-300 flex items-center gap-1.5 transition" title="Çıkış Yap">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    <span class="hidden md:inline">Çıkış</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- NAVIGATION SIDEBAR -->
+        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col justify-between hidden md:flex shrink-0">
+            <div class="p-4 space-y-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition text-brand-600 bg-brand-50">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                    Özet & Analiz Paneli
+                </button>
+                <button onclick="switchTab('companies')" id="nav-companies" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                    <i data-lucide="building-2" class="w-4 h-4"></i>
+                    Firma & Müşteri Kartları
+                </button>
+                <button onclick="switchTab('operations')" id="nav-operations" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                    Pazarlama Operasyonları
+                </button>
+                <button onclick="switchTab('databank')" id="nav-databank" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                    <i data-lucide="database" class="w-4 h-4"></i>
+                    Araştırma Veri Bankası
+                </button>
+            </div>
+
+            
+        </aside>
+
+        <!-- CONTENT AREA -->
+        <main class="flex-1 overflow-y-auto custom-scrollbar p-6 bg-slate-50">
+
+            <!-- TAB 1: DASHBOARD -->
+            <section id="tab-dashboard" class="tab-content space-y-6">
+                <!-- KPI CARDS -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Toplam Hedef Firma</p>
+                            <h3 class="text-2xl font-bold text-slate-900 mt-1" id="kpi-total-companies">0</h3>
+                            <p class="text-xs text-slate-400 mt-1" id="kpi-companies-sub">Veri bankasındaki kayıtlar</p>
+                        </div>
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                            <i data-lucide="building" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Yapılan Temas / Op.</p>
+                            <h3 class="text-2xl font-bold text-slate-900 mt-1" id="kpi-total-ops">0</h3>
+                            <p class="text-xs text-slate-400 mt-1">E-posta, Arama, Numune vb.</p>
+                        </div>
+                        <div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+                            <i data-lucide="send" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Yanıt Alınan</p>
+                            <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="kpi-responses">0</h3>
+                            <p class="text-xs text-emerald-600 font-medium mt-1" id="kpi-response-rate">%0 Dönüş Oranı</p>
+                        </div>
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                            <i data-lucide="message-square-check" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Geri Dönüş Bekleyen Uyarısı</p>
+                            <h3 class="text-2xl font-bold text-amber-600 mt-1" id="kpi-pending-alerts">0</h3>
+                            <p class="text-xs text-amber-600 font-medium mt-1">Takip Gerektiren Kayıt</p>
+                        </div>
+                        <div class="p-3 bg-amber-50 text-amber-600 rounded-lg">
+                            <i data-lucide="clock-alert" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHARTS & ALERT LIST SECTION -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left: Status Breakdown -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-1 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm mb-1">Müşteri Segment & Durum Dağılımı</h3>
+                            <p class="text-xs text-slate-400 mb-4">Firmaların süreçteki güncel aşamaları</p>
+                        </div>
+                        <div class="relative flex items-center justify-center h-64">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Middle: Marketing Operation Types -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-1 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm mb-1">Pazarlama Kanalları Analizi</h3>
+                            <p class="text-xs text-slate-400 mb-4">En çok kullanılan temas yöntemleri</p>
+                        </div>
+                        <div class="relative flex items-center justify-center h-64">
+                            <canvas id="marketingTypeChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Right: Urgent Follow-ups / No Response Alert Panel -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-1.5 text-rose-700">
+                                    <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                                    Geri Dönüş Olmayanlar & Uyarılı
+                                </h3>
+                                <p class="text-xs text-slate-400">Temas kurulup yanıt beklenilen tüm kayıtlar</p>
+                            </div>
+                            <span class="px-2.5 py-1 text-xs bg-rose-100 text-rose-800 rounded-full font-bold" id="no-resp-badge">0</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <input type="text" id="alertSearch" oninput="renderNoResponseAlerts()" placeholder="Uyarılarda firma veya not ara..." class="w-full text-xs p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-rose-400 focus:outline-none bg-slate-50">
+                        </div>
+
+                        <div id="no-response-list" class="space-y-2.5 overflow-y-auto max-h-[480px] custom-scrollbar flex-1 pr-1">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- TAB 2: COMPANIES LIST / CARDS -->
+            <section id="tab-companies" class="tab-content hidden space-y-4">
+                <!-- Search & Filters Header -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+                    <div class="relative w-full md:w-80">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
+                        <input type="text" id="companySearch" oninput="renderCompanies()" placeholder="Firma adı, yetkili veya unvan ara..." class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        <select id="filterAssignee" onchange="renderCompanies()" class="border border-slate-200 rounded-lg text-xs px-3 py-2 bg-slate-50 font-medium focus:outline-none text-brand-700">
+                            <option value="">Tüm Sorumlular</option>
+                            <option value="🦹‍♂️ Tarık">🦹‍♂️ Tarık</option>
+                            <option value="🦸‍♂️ Doğukan">🦸‍♂️ Doğukan</option>
+                            <option value="Atanmadı">Atanmadı</option>
+                        </select>
+
+                        <select id="filterSector" onchange="renderCompanies()" class="border border-slate-200 rounded-lg text-xs px-3 py-2 bg-slate-50 focus:outline-none">
+                            <option value="">Tüm Sektörler / Segmentler</option>
+                            <option value="Alüminyum Haddeleme">Alüminyum Haddeleme</option>
+                            <option value="Kablo & Tel">Kablo & Tel</option>
+                            <option value="Ambalaj & Folyo">Ambalaj & Folyo</option>
+                            <option value="Plastik & Makara">Plastik & Makara</option>
+                            <option value="Diğer">Diğer</option>
+                        </select>
+
+                        <select id="filterStatus" onchange="renderCompanies()" class="border border-slate-200 rounded-lg text-xs px-3 py-2 bg-slate-50 focus:outline-none">
+                            <option value="">Tüm Durumlar</option>
+                            <option value="Potansiyel">Potansiyel</option>
+                            <option value="Temas Kuruldu">Temas Kuruldu</option>
+                            <option value="Teklif Verildi">Teklif Verildi</option>
+                            <option value="Müşteri">Müşteri</option>
+                            <option value="Olumsuz / Pasif">Olumsuz / Pasif</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Companies Grid (Bir Satırda 4 Kart) -->
+                <div id="companies-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+                    <!-- Dynamic Company Cards Inserted Here -->
+                </div>
+            </section>
+
+            <!-- TAB 3: OPERATIONS & HISTORY -->
+            <section id="tab-operations" class="tab-content hidden space-y-4">
+                <div class="flex flex-col md:flex-row items-center justify-between bg-white p-4 rounded-xl border border-slate-200 gap-3">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-sm">Pazarlama Operasyon Geçmişi</h3>
+                        <p class="text-xs text-slate-500">Tüm firmalara uygulanan pazarlama ve iletişim faaliyetleri</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        <div class="relative w-full md:w-64">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                            <input type="text" id="opTableSearch" oninput="renderOperationsTable()" placeholder="Operasyon geçmişinde ara..." class="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+
+                        <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition" title="Listeyi Yazdır / PDF Al">
+                            <i data-lucide="printer" class="w-4 h-4"></i>
+                            <span class="hidden sm:inline">Yazdır</span>
+                        </button>
+
+                        <button onclick="openOperationModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            Yeni Operasyon Kaydet
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-4 py-3">Tarih</th>
+                                    <th class="px-4 py-3">Firma</th>
+                                    <th class="px-4 py-3">Sorumlu</th>
+                                    <th class="px-4 py-3">Pazarlama Türü</th>
+                                    <th class="px-4 py-3">Ulaşılan Yetkili / Kanal</th>
+                                    <th class="px-4 py-3">Geri Dönüş Var mı?</th>
+                                    <th class="px-4 py-3">Yanıt / Not Açıklaması</th>
+                                    <th class="px-4 py-3 text-right">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="operations-table-body" class="divide-y divide-slate-100">
+                                <!-- Dynamic Operations List -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: RESEARCH DATABANK (PDF'DEKİ NOTLAR & KAYNAKLAR İÇİN) -->
+            <section id="tab-databank" class="tab-content hidden space-y-4">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
+                        <i data-lucide="book-open" class="w-5 h-5 text-brand-600"></i>
+                        Pazar Araştırma Notları & Açık Kaynak Veri Bankası
+                    </h3>
+                    <p class="text-xs text-slate-500 mb-4">PDF araştırmasında elde edilen unvan, LinkedIn, haddeleme sektörü bulguları ve firma yönlendirme notları.</p>
+                    
+                    <div class="space-y-3" id="databank-notes-list">
+                        <!-- Dynamic Research Notes from Companies -->
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL 1: ADD/EDIT COMPANY -->
+    <div id="companyModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <h3 class="font-bold text-sm" id="companyModalTitle">Yeni Firma & Müşteri Kartı</h3>
+                <button onclick="closeCompanyModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+         <form id="companyForm" onsubmit="saveCompany(event)" class="p-6 space-y-4 overflow-y-auto custom-scrollbar text-xs">
+                <input type="hidden" id="companyId">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Firma Unvanı / Adı *</label>
+                        <input type="text" id="compName" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Örn: Gränges Americas / Noranda">
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Sektör / İş Kolu</label>
+                        <select id="compSector" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Alüminyum Haddeleme">Alüminyum Haddeleme</option>
+                            <option value="Kablo & Tel">Kablo & Tel</option>
+                            <option value="Ambalaj & Folyo">Ambalaj & Folyo</option>
+                            <option value="Plastik & Makara">Plastik & Makara</option>
+                            <option value="Diğer">Diğer</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Dynamic Contacts List -->
+                <div class="border border-slate-200 bg-slate-50/70 p-3.5 rounded-xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                            <i data-lucide="users" class="w-4 h-4 text-brand-600"></i>
+                            İletişim Yetkilileri & E-Posta Adresleri
+                        </label>
+                        <button type="button" onclick="addContactRow()" class="px-2.5 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded-lg font-semibold text-[11px] flex items-center gap-1 transition">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> + Yetkili Ekle
+                        </button>
+                    </div>
+
+                    <div id="contactsListContainer" class="space-y-2">
+                        <!-- Dynamic Contact Rows Will Render Here -->
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Telefon / WhatsApp</label>
+                        <input type="text" id="compPhone" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="+90 555..., +1 202...">
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Ülke / Bölge</label>
+                        <input type="text" id="compLocation" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="ABD / Almanya / Türkiye">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Web Sitesi</label>
+                        <input type="url" id="compWebsite" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="https://www.sirket.com">
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">LinkedIn Profili</label>
+                        <input type="url" id="compLinkedin" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="https://linkedin.com/company/...">
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Sorumlu</label>
+                        <select id="compAssignee" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none font-semibold text-brand-700 bg-brand-50/50">
+                            <option value="🦹‍♂️️ Tarık">🦹‍♂️ Tarık</option>
+                            <option value="🦸‍♂️ Doğukan">🦸‍♂️ Doğukan</option>
+                            <option value="Atanmadı">Atanmadı</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Müşteri Durumu</label>
+                        <select id="compStatus" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Potansiyel">Potansiyel</option>
+                            <option value="Temas Kuruldu">Temas Kuruldu</option>
+                            <option value="Teklif Verildi">Teklif Verildi</option>
+                            <option value="Müşteri">Müşteri</option>
+                            <option value="Olumsuz / Pasif">Olumsuz / Pasif</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Araştırma Notu & Detaylar (PDF Araştırma Bulguları)</label>
+                    <textarea id="compResearchNote" rows="3" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Hedef unvanda açık kaynak bulguları, haddeleme detayları, firma yönlendirmesi..."></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                    <button type="button" onclick="closeCompanyModal()" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 font-medium text-slate-700">İptal</button>
+                    <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-semibold">Kaydet</button>
+                </div>
+            </form>
+               
+        </div>
+    </div>
+
+    <!-- MODAL 2: ADD MARKETING OPERATION -->
+    <div id="operationModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <h3 class="font-bold text-sm" id="operationModalTitle">Pazarlama Operasyonu / Temas Kaydı</h3>
+                <button onclick="closeOperationModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <form id="operationForm" onsubmit="saveOperation(event)" class="p-6 space-y-4 text-xs">
+                <input type="hidden" id="opId">
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">İlgili Firma *</label>
+                    <select id="opCompanyId" onchange="updateOpContactOptions()" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <!-- Dynamic Company Options -->
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">İşlem Tarihi *</label>
+                        <input type="date" id="opDate" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="font-medium text-slate-700">Pazarlama Türü *</label>
+                            <button type="button" onclick="addNewMarketingType()" class="text-[11px] text-brand-600 hover:underline font-semibold">+ Tür Ekle</button>
+                        </div>
+                        <select id="opType" onchange="handleOpTypeChange()" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Soğuk E-Posta">Soğuk E-Posta</option>
+                            <option value="LinkedIn Mesaj/InMail">LinkedIn Mesaj/InMail</option>
+                            <option value="Telefon Görüşmesi">Telefon Görüşmesi</option>
+                            <option value="Katalog Gönderimi">Katalog Gönderimi</option>
+                            <option value="Numune Spool Gönderimi">Numune Spool Gönderimi</option>
+                            <option value="Fuar / Yüz Yüze Ziyaret">Fuar / Yüz Yüze Ziyaret</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Operasyon Temsilcisi *</label>
+                        <select id="opAssignee" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none bg-indigo-50/60 font-semibold text-indigo-900">
+                            <option value="🦹‍♂️ Tarık">🦹‍♂️ Tarık</option>
+                            <option value="🦸‍♂️ Doğukan">🦸‍♂️ Doğukan</option>
+                            <option value="Ortak / Diğer">Ortak / Diğer</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Conditional Catalog Selection Field -->
+                <div id="catalogSelectContainer" class="hidden p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="font-bold text-amber-900 text-xs flex items-center gap-1.5">
+                            <i data-lucide="book-open" class="w-4 h-4 text-amber-700"></i>
+                            Gönderilen Katalog Seçimi
+                        </label>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="addNewCatalogPrompt()" class="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded font-semibold text-[10px]">
+                                + Yeni Katalog Kaydet
+                            </button>
+                            <button type="button" onclick="deleteSelectedCatalogPrompt()" class="px-2 py-0.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded font-semibold text-[10px]">
+                                - Seçileni Sil
+                            </button>
+                        </div>
+                    </div>
+                    <select id="opSelectedCatalog" class="w-full p-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white text-xs">
+                        <!-- Dynamic Catalogs List -->
+                    </select>
+                </div>
+
+                <!-- Multi-Email Checkbox Selection -->
+                <div class="border border-slate-200 bg-slate-50 p-3 rounded-xl space-y-2">
+                    <label class="block font-bold text-slate-800 text-xs">
+                        Temas Edilen İletişim / Gönderilen E-Posta(lar) (Birden fazla seçilebilir) *
+                    </label>
+                    <div id="opEmailCheckboxes" class="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar p-1">
+                        <!-- Dynamic Email Checkboxes Render Here -->
+                    </div>
+                    <div class="pt-1">
+                        <input type="text" id="opTargetContact" class="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Ek olarak manuel e-posta veya kanal adresi yazabilirsiniz...">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Geri Dönüş Oldu mu? *</label>
+                        <select id="opHasResponse" onchange="toggleResponseFields()" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Hayır">Hayır (Yanıt Bekleniyor)</option>
+                            <option value="Evet">Evet (Yanıt Alındı)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Dönüş Türü / Sonuç</label>
+                        <select id="opResponseType" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Beklemede">Beklemede / Yanıt Yok</option>
+                            <option value="Olumlu - Fiyat/Teklif İstedi">Olumlu - Fiyat/Teklif İstedi</option>
+                            <option value="Olumlu - Numune İstedi">Olumlu - Numune İstedi</option>
+                            <option value="Bilgi Talebi">Bilgi Talebi / Katalog İstedi</option>
+                            <option value="Olumsuz - İhtiyaç Yok">Olumsuz - İhtiyaç Yok</option>
+                            <option value="Yanlış İletişim / Ulaşılamadı">Yanlış İletişim / Ulaşılamadı</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Görüşme Notu / Yanıt Detayı</label>
+                    <textarea id="opNotes" rows="3" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Alınan cevabın özeti, Spool ölçü talepleri veya takip notu..."></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                    <button type="button" onclick="closeOperationModal()" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 font-medium text-slate-700">İptal</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold">Operasyonu Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: VIEW COMPANY DETAIL & HISTORY -->
+    <div id="companyDetailModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-base" id="detailCompName">Firma Detayı</h3>
+                    <p class="text-xs text-slate-400" id="detailCompSector">Sektör</p>
+                </div>
+                <button onclick="closeCompanyDetailModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-6 text-xs">
+                
+                <!-- Info Cards Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div class="space-y-2.5">
+                        <div><span class="text-slate-500 block text-[11px]">Hedef Kişi & Unvanlar:</span> <div id="detailContactList" class="font-semibold text-slate-800 space-y-1 mt-1">-</div></div>
+                        <div><span class="text-slate-500 block text-[11px]">E-Posta Adresleri:</span> <div id="detailEmailList" class="flex flex-wrap gap-1 mt-1 break-all"></div></div>
+                        <div><span class="text-slate-500">Telefon:</span> <span id="detailPhone" class="font-medium text-slate-800">-</span></div>
+                    </div>
+                    <div class="space-y-2">
+                        <div><span class="text-slate-500">Sorumlu:</span> <span id="detailAssignee" class="px-2 py-0.5 rounded bg-brand-100 text-brand-800 font-bold text-[11px]">-</span></div>
+                        <div><span class="text-slate-500">Konum:</span> <span id="detailLocation" class="font-medium text-slate-800">-</span></div>
+                        <div><span class="text-slate-500">Durum:</span> <span id="detailStatus" class="px-2 py-0.5 rounded-full font-semibold text-[11px]">-</span></div>
+                        <div><span class="text-slate-500">Web Sitesi:</span> <a href="#" id="detailWebsite" target="_blank" class="text-brand-600 font-medium underline break-all hidden">Siteyi Aç</a><span id="detailWebsiteNone" class="text-slate-400">-</span></div>
+                        <div><span class="text-slate-500">LinkedIn:</span> <a href="#" id="detailLinkedin" target="_blank" class="text-brand-600 font-medium underline break-all hidden">Profili Aç</a><span id="detailLinkedinNone" class="text-slate-400">-</span></div>
+                    </div>
+                </div>
+
+                <!-- PDF Research Note Box -->
+                <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-4">
+                    <h4 class="font-bold text-amber-900 mb-1 flex items-center gap-1.5">
+                        <i data-lucide="file-text" class="w-4 h-4 text-amber-700"></i>
+                        Araştırma & İnceleme Notu
+                    </h4>
+                    <p id="detailResearchNote" class="text-amber-950 leading-relaxed whitespace-pre-line text-xs">Açıklama bulunmuyor.</p>
+                </div>
+
+                <!-- Operations Timeline -->
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            <i data-lucide="history" class="w-4 h-4 text-brand-600"></i>
+                            Pazarlama Operasyonları Geçmişi
+                        </h4>
+                        <button id="addOpFromDetailBtn" class="text-brand-600 hover:text-brand-700 font-semibold flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            Bu Firmaya Operasyon Ekle
+                        </button>
+                    </div>
+
+                    <div id="detailOpsTimeline" class="space-y-3">
+                        <!-- Dynamic timeline list -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: BATCH UPLOAD (TOPLU YÜKLEME) -->
+    <div id="bulkUploadModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <h3 class="font-bold text-sm">Toplu Firma Yükleme (CSV Şablonu)</h3>
+                <button onclick="closeBulkUploadModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 space-y-4 text-xs">
+                <p class="text-slate-600">
+                    Sisteme sorunsuz yükleme yapmak için önce örnek şablonu indirin. Excel'de verilerinizi doldurup <b>CSV (Virgülle Ayrılmış)</b> olarak kaydedin ve buraya yükleyin.
+                </p>
+                <div class="flex justify-center">
+                    <button onclick="downloadTemplate()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg font-semibold flex items-center gap-2 transition">
+                        <i data-lucide="download" class="w-4 h-4"></i> Örnek Şablonu İndir
+                    </button>
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-200">
+                    <label class="block font-medium text-slate-700 mb-2">Doldurulmuş CSV Dosyasını Seçin</label>
+                    <input type="file" id="bulkCsvInput" accept=".csv" onchange="handleBulkUpload(event)" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border border-slate-200 rounded-lg">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULLSCREEN LOGIN OVERLAY (GİRİŞ EKRANI) -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-900 z-[100] flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
+            <div class="flex items-center gap-3 justify-center mb-6">
+                <div class="bg-brand-500 p-2 rounded-lg text-white font-bold flex items-center justify-center">
+                    <i data-lucide="disc-3" class="w-6 h-6 animate-spin-slow"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900">Spool CRM Girişi</h2>
+            </div>
+            <form onsubmit="loginUser(event)" class="space-y-4 text-sm">
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">E-Posta</label>
+                    <input type="email" id="loginEmail" required class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="kullanici@sirket.com">
+                </div>
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Şifre</label>
+                    <input type="password" id="loginPass" required class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-bold shadow-md transition">Sisteme Giriş Yap</button>
+                <p id="loginError" class="text-rose-500 text-xs font-semibold text-center hidden"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // FIREBASE YAPILANDIRMASI (Kendi Firebase proje ayarlarınızı buraya yazın)
+        const firebaseConfig = {
+  apiKey: "AIzaSyA1sz6NAQpHS71oYDhK9SwTNEq3VHcV0YU",
+  authDomain: "spoolmaster-8e5f6.firebaseapp.com",
+  projectId: "spoolmaster-8e5f6",
+  storageBucket: "spoolmaster-8e5f6.firebasestorage.app",
+  messagingSenderId: "699023786902",
+  appId: "1:699023786902:web:ce8a5dd02f9635412013b7"
+};
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let companies = [];
+        let operations = [];
+        let customMarketingTypes = ["Soğuk E-Posta", "LinkedIn Mesaj/InMail", "Telefon Görüşmesi", "Katalog Gönderimi", "Numune Spool Gönderimi", "Fuar / Yüz Yüze Ziyaret"];
+        let catalogList = ["Spool Presentation 2026 PDF", "Ağır Hizmet Makara Kataloğu v1", "Alüminyum Haddeleme Spool Kataloğu"];
+
+        // TEMSİLCİ EMOJİ EŞLEŞTİRME FONKSİYONU
+        function formatAssignee(name) {
+            if (!name) return '🦹‍♂️ Tarık';
+            if (name.includes('Doğukan')) return '🦸‍♂️ Doğukan';
+            if (name.includes('Tarık')) return '🦹‍♂️ Tarık';
+            return name;
+        }
+
+        // INITIALIZATION VE GİRİŞ KONTROLÜ
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            
+            // Kullanıcı girişi dinleyicisi
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    fetchFirebaseData(); // Giriş yapıldıysa verileri çek
+                } else {
+                    document.getElementById('loginScreen').classList.remove('hidden'); // Giriş ekranını göster
+                }
+            });
+        });
+
+        // GİRİŞ VE ÇIKIŞ FONKSİYONLARI
+        function loginUser(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPass').value;
+            const errEl = document.getElementById('loginError');
+            
+            auth.signInWithEmailAndPassword(email, pass)
+                .then(() => { errEl.classList.add('hidden'); })
+                .catch(error => {
+                    errEl.textContent = "Hatalı giriş: " + error.message;
+                    errEl.classList.remove('hidden');
+                });
+        }
+
+        function logoutUser() {
+            auth.signOut();
+        }
+
+        // FİREBASE VERİ ÇEKME (CANLI)
+        function fetchFirebaseData() {
+            db.collection('companies').onSnapshot((snapshot) => {
+                companies = [];
+                snapshot.forEach(doc => companies.push({ id: doc.id, ...doc.data() }));
+                refreshUI();
+            });
+
+            db.collection('operations').onSnapshot((snapshot) => {
+                operations = [];
+                snapshot.forEach(doc => operations.push({ id: doc.id, ...doc.data() }));
+                refreshUI();
+            });
+        }
+
+        // TAB NAVIGATION
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active', 'text-brand-600', 'bg-brand-50');
+                el.classList.add('text-slate-600');
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            if (activeBtn) {
+                activeBtn.classList.add('active', 'text-brand-600', 'bg-brand-50');
+            }
+
+            if (tabName === 'dashboard') renderCharts();
+        }
+
+        // REFRESH ALL UI COMPONENTS
+        function refreshUI() {
+            renderDashboardKPIs();
+            renderCompanies();
+            renderOperationsTable();
+            renderDatabankNotes();
+            renderNoResponseAlerts();
+            renderCharts();
+            lucide.createIcons();
+        }
+
+        // DASHBOARD KPIS & CHARTS
+        function renderDashboardKPIs() {
+            document.getElementById('kpi-total-companies').textContent = companies.length;
+            document.getElementById('kpi-total-ops').textContent = operations.length;
+
+            const respondedOps = operations.filter(o => o.hasResponse === 'Evet');
+            document.getElementById('kpi-responses').textContent = respondedOps.length;
+
+            const rate = operations.length > 0 ? Math.round((respondedOps.length / operations.length) * 100) : 0;
+            document.getElementById('kpi-response-rate').textContent = `%${rate} Dönüş Oranı`;
+
+            // Pending Alert Count
+            const noResponseOps = operations.filter(o => o.hasResponse === 'Hayır');
+            document.getElementById('kpi-pending-alerts').textContent = noResponseOps.length;
+            
+            const badge = document.getElementById('alert-badge-count');
+            if (noResponseOps.length > 0) {
+                badge.textContent = noResponseOps.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        
+
+        let statusChartInstance = null;
+        let marketingChartInstance = null;
+
+        function renderCharts() {
+            // Status Chart
+            const ctx1 = document.getElementById('statusChart').getContext('2d');
+            const statusCounts = {};
+            companies.forEach(c => { statusCounts[c.status] = (statusCounts[c.status] || 0) + 1; });
+
+            if (statusChartInstance) statusChartInstance.destroy();
+            statusChartInstance = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(statusCounts),
+                    datasets: [{
+                        data: Object.values(statusCounts),
+                        backgroundColor: ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
+                }
+            });
+
+            // Marketing Channel Chart
+            const ctx2 = document.getElementById('marketingTypeChart').getContext('2d');
+            const typeCounts = {};
+            operations.forEach(o => { typeCounts[o.type] = (typeCounts[o.type] || 0) + 1; });
+
+            if (marketingChartInstance) marketingChartInstance.destroy();
+            marketingChartInstance = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(typeCounts),
+                    datasets: [{
+                        label: 'Operasyon Sayısı',
+                        data: Object.values(typeCounts),
+                        backgroundColor: '#0369a1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        }
+
+        // RENDER COMPANIES GRID
+        function renderCompanies() {
+            const grid = document.getElementById('companies-grid');
+            const search = document.getElementById('companySearch').value.toLowerCase();
+            const sectorFilter = document.getElementById('filterSector').value;
+            const statusFilter = document.getElementById('filterStatus').value;
+            const assigneeFilter = document.getElementById('filterAssignee') ? document.getElementById('filterAssignee').value : '';
+
+            grid.innerHTML = '';
+
+            const filtered = companies.filter(c => {
+                const matchesSearch = c.name.toLowerCase().includes(search) || 
+                                      (c.contact && c.contact.toLowerCase().includes(search)) ||
+                                      (c.title && c.title.toLowerCase().includes(search));
+                const matchesSector = !sectorFilter || c.sector === sectorFilter;
+                const matchesStatus = !statusFilter || c.status === statusFilter;
+                
+                const cAssigneeFormatted = formatAssignee(c.assignee);
+                const matchesAssignee = !assigneeFilter || 
+                                       cAssigneeFormatted === assigneeFilter || 
+                                       (assigneeFilter === 'Atanmadı' && (!c.assignee || c.assignee === 'Atanmadı'));
+
+                return matchesSearch && matchesSector && matchesStatus && matchesAssignee;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-sm">Arama kriterlerine uygun firma bulunamadı.</div>`;
+                return;
+            }
+
+            // Firmaları A'dan Z'ye Alfabetik Sırala
+            filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr', { sensitivity: 'base' }));
+
+            filtered.forEach(c => {
+                const compOps = operations.filter(o => o.companyId === c.id);
+                const hasPending = compOps.some(o => o.hasResponse === 'Hayır');
+
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-xl border p-5 shadow-sm hover:shadow-lg hover:border-brand-300 cursor-pointer transition flex flex-col justify-between ${hasPending ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'}`;
+                
+                card.onclick = (e) => {
+                    if (e.target.closest('button')) return; 
+                    openCompanyDetail(c.id);
+                };
+
+                card.innerHTML = `
+    <div class="space-y-3">
+        <div class="flex items-start justify-between">
+            <div>
+                <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400">${c.sector || 'Sektör Belirtilmedi'}</span>
+                <h3 class="font-bold text-slate-900 text-sm leading-tight hover:text-brand-600">${c.name}</h3>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusBadgeClass(c.status)}">${c.status}</span>
+        </div>
+
+        <div class="text-xs space-y-1 text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+            <div><span class="font-medium text-slate-700">Sorumlu:</span> <span class="font-bold text-brand-700">${c.assignee || '🦹‍♂️ Tarık'}</span></div>
+            <div><span class="font-medium text-slate-700">Yetkili:</span> ${c.contact || '-'}</div>
+            <div><span class="font-medium text-slate-700">Unvan:</span> ${c.title || '-'}</div>
+            ${c.email ? `<div><span class="font-medium text-slate-700">E-Posta:</span> ${c.email}</div>` : ''}
+        </div>
+
+        ${c.researchNote ? `
+            <p class="text-[11px] text-slate-500 line-clamp-2 italic bg-amber-50/50 p-2 rounded border border-amber-100">
+                "${c.researchNote}"
+            </p>
+        ` : ''}
+    </div>               
+
+                    <div class="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <span class="text-slate-600 font-semibold text-[11px] flex items-center gap-1 bg-slate-100 px-2 py-1 rounded">
+                            <i data-lucide="send" class="w-3 h-3 text-brand-600"></i> ${compOps.length} Operasyon
+                        </span>
+
+                        <div class="flex items-center gap-1">
+                            <button onclick="event.stopPropagation(); openCompanyDetail('${c.id}')" class="p-1.5 text-slate-600 hover:text-brand-600 hover:bg-slate-100 rounded" title="Detay & Operasyonlar"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                            <button onclick="event.stopPropagation(); editCompany('${c.id}')" class="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded" title="Düzenle"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                            <button onclick="event.stopPropagation(); deleteCompany('${c.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded" title="Sil"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        function getStatusBadgeClass(status) {
+            switch(status) {
+                case 'Potansiyel': return 'bg-blue-100 text-blue-800';
+                case 'Temas Kuruldu': return 'bg-indigo-100 text-indigo-800';
+                case 'Teklif Verildi': return 'bg-amber-100 text-amber-800';
+                case 'Müşteri': return 'bg-emerald-100 text-emerald-800';
+                case 'Olumsuz / Pasif': return 'bg-slate-100 text-slate-600';
+                default: return 'bg-slate-100 text-slate-800';
+            }
+        }
+
+        // RENDER OPERATIONS TABLE
+        function renderOperationsTable() {
+            const tbody = document.getElementById('operations-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const searchInput = document.getElementById('opTableSearch');
+            const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+            let filteredOps = [...operations];
+            if (query) {
+                filteredOps = filteredOps.filter(op => {
+                    const comp = companies.find(c => c.id === op.companyId) || { name: '' };
+                    const assigneeStr = formatAssignee(op.assignee).toLowerCase();
+                    return comp.name.toLowerCase().includes(query) ||
+                           assigneeStr.includes(query) ||
+                           (op.type && op.type.toLowerCase().includes(query)) ||
+                           (op.targetContact && op.targetContact.toLowerCase().includes(query)) ||
+                           (op.notes && op.notes.toLowerCase().includes(query)) ||
+                           (op.responseType && op.responseType.toLowerCase().includes(query));
+                });
+            }
+
+            if (filteredOps.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Aramanıza uygun operasyon kaydı bulunamadı.</td></tr>`;
+                return;
+            }
+
+            filteredOps.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(op => {
+                const comp = companies.find(c => c.id === op.companyId) || { name: 'Silinmiş Firma' };
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">${op.date}</td>
+                    <td class="px-4 py-3 font-bold text-slate-900">${comp.name}</td>
+                    <td class="px-4 py-3"><span class="bg-indigo-50 text-indigo-800 font-bold px-2 py-0.5 rounded text-[11px] border border-indigo-100">${formatAssignee(op.assignee)}</span></td>
+                    <td class="px-4 py-3"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">${op.type}</span></td>
+                    <td class="px-4 py-3 text-slate-600">${op.targetContact || '-'}</td>
+                    <td class="px-4 py-3">
+                        ${op.hasResponse === 'Evet' 
+                            ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-semibold flex items-center w-max gap-1"><i data-lucide="check" class="w-3 h-3"></i> Yanıt Alındı</span>`
+                            : `<span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-semibold flex items-center w-max gap-1"><i data-lucide="clock" class="w-3 h-3"></i> Bekliyor</span>`
+                        }
+                    </td>
+                    <td class="px-4 py-3 text-slate-600 max-w-xs truncate" title="${op.notes || ''}">
+                        <span class="font-semibold text-slate-800">${op.responseType || ''}</span> ${op.notes ? `- ${op.notes}` : ''}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="editOperation('${op.id}')" class="text-indigo-600 hover:text-indigo-800 p-1 mr-1" title="Düzenle/Güncelle"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                        <button onclick="deleteOperation('${op.id}')" class="text-slate-400 hover:text-rose-600 p-1" title="Sil"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        // RENDER RESEARCH DATABANK NOTES
+        function renderDatabankNotes() {
+            const list = document.getElementById('databank-notes-list');
+            list.innerHTML = '';
+
+            const compsWithNotes = companies.filter(c => c.researchNote && c.researchNote.trim() !== '');
+
+            if (compsWithNotes.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-400">Araştırma notu eklenmiş firma bulunmuyor.</p>`;
+                return;
+            }
+
+            compsWithNotes.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col gap-2 text-xs';
+                div.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-900 text-sm">${c.name}</span>
+                        <span class="text-[11px] text-slate-500">${c.sector || ''} - ${c.location || ''}</span>
+                    </div>
+                    <div class="text-slate-700 bg-white p-3 rounded-lg border border-slate-200 whitespace-pre-line leading-relaxed">
+                        ${c.researchNote}
+                    </div>
+                    ${c.linkedin ? `<div><a href="${c.linkedin}" target="_blank" class="text-brand-600 hover:underline font-medium inline-flex items-center gap-1"><i data-lucide="external-link" class="w-3 h-3"></i> Kaynak / LinkedIn Profil Bağlantısı</a></div>` : ''}
+                `;
+                list.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        // DİNAMİK YETKİLİ SATIRLARI YÖNETİMİ (+ Tuşu)
+        function addContactRow(name = '', title = '', email = '') {
+            const container = document.getElementById('contactsListContainer');
+            if (!container) return;
+
+            const rowId = 'contact-row-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4);
+            const div = document.createElement('div');
+            div.id = rowId;
+            div.className = 'grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-white p-2 rounded-lg border border-slate-200 shadow-sm';
+            div.innerHTML = `
+                <div class="sm:col-span-4">
+                    <input type="text" class="contact-name w-full p-2 border border-slate-200 rounded text-xs focus:ring-1 focus:ring-brand-500 focus:outline-none" placeholder="Adı Soyadı" value="${name}">
+                </div>
+                <div class="sm:col-span-3">
+                    <input type="text" class="contact-title w-full p-2 border border-slate-200 rounded text-xs focus:ring-1 focus:ring-brand-500 focus:outline-none" placeholder="Unvanı / Görevi" value="${title}">
+                </div>
+                <div class="sm:col-span-4">
+                    <input type="email" class="contact-email w-full p-2 border border-slate-200 rounded text-xs focus:ring-1 focus:ring-brand-500 focus:outline-none" placeholder="e-posta@sirket.com" value="${email}">
+                </div>
+                <div class="sm:col-span-1 text-right">
+                    <button type="button" onclick="removeContactRow('${rowId}')" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition" title="Yetkiliyi Sil">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+            lucide.createIcons();
+        }
+
+        function removeContactRow(rowId) {
+            const el = document.getElementById(rowId);
+            if (el) el.remove();
+        }
+
+        function getCompanyContactsFromForm() {
+            const rows = document.querySelectorAll('#contactsListContainer > div');
+            const contacts = [];
+            rows.forEach(row => {
+                const name = row.querySelector('.contact-name')?.value.trim() || '';
+                const title = row.querySelector('.contact-title')?.value.trim() || '';
+                const email = row.querySelector('.contact-email')?.value.trim() || '';
+                if (name || title || email) {
+                    contacts.push({ name, title, email });
+                }
+            });
+            return contacts;
+        }
+
+        // SAVE COMPANY (ADD / EDIT)
+        async function saveCompany(e) {
+            e.preventDefault();
+            const id = document.getElementById('companyId').value || 'comp-' + Date.now();
+            const contacts = getCompanyContactsFromForm();
+
+            const contactNames = contacts.map(c => c.name).filter(Boolean).join(', ');
+            const contactTitles = contacts.map(c => c.title).filter(Boolean).join(', ');
+            const contactEmails = contacts.map(c => c.email).filter(Boolean).join(', ');
+
+            const data = {
+                name: document.getElementById('compName').value,
+                sector: document.getElementById('compSector').value,
+                assignee: document.getElementById('compAssignee').value || '🦹‍♂️ Tarık',
+                contacts: contacts,
+                contact: contactNames,
+                title: contactTitles,
+                email: contactEmails,
+                phone: document.getElementById('compPhone').value,
+                location: document.getElementById('compLocation').value,
+                website: document.getElementById('compWebsite').value,
+                linkedin: document.getElementById('compLinkedin').value,
+                status: document.getElementById('compStatus').value,
+                researchNote: document.getElementById('compResearchNote').value,
+                updatedAt: new Date().toISOString()
+            };
+
+            try {
+                await db.collection('companies').doc(id).set(data, { merge: true });
+                closeCompanyModal();
+            } catch (err) {
+                alert("Firma kaydedilirken bir hata oluştu: " + err.message);
+            }
+        }
+
+        async function deleteCompany(id) {
+            if (!confirm('Bu firmayı ve tüm detaylarını silmek istediğinize emin misiniz?')) return;
+            try {
+                await db.collection('companies').doc(id).delete();
+            } catch (err) {
+                alert("Firma silinirken bir hata oluştu: " + err.message);
+            }
+        }
+
+        function editCompany(id) {
+            const c = companies.find(item => item.id === id);
+            if (!c) return;
+
+            document.getElementById('companyId').value = c.id;
+            document.getElementById('compName').value = c.name || '';
+            document.getElementById('compSector').value = c.sector || 'Alüminyum Haddeleme';
+            document.getElementById('compAssignee').value = c.assignee || '🦹‍♂️ Tarık';
+            document.getElementById('compPhone').value = c.phone || '';
+            document.getElementById('compLocation').value = c.location || '';
+            document.getElementById('compWebsite').value = c.website || '';
+            document.getElementById('compLinkedin').value = c.linkedin || '';
+            document.getElementById('compStatus').value = c.status || 'Potansiyel';
+            document.getElementById('compResearchNote').value = c.researchNote || '';
+            const container = document.getElementById('contactsListContainer');
+            if (container) {
+                container.innerHTML = '';
+                if (c.contacts && Array.isArray(c.contacts) && c.contacts.length > 0) {
+                    c.contacts.forEach(cnt => addContactRow(cnt.name, cnt.title, cnt.email));
+                } else if (c.contact || c.email) {
+                    addContactRow(c.contact || '', c.title || '', c.email || '');
+                } else {
+                    addContactRow();
+                }
+            }
+
+            document.getElementById('companyModalTitle').textContent = 'Firma Kartını Düzenle';
+            document.getElementById('companyModal').classList.remove('hidden');
+        }
+
+        // YENİ PAZARLAMA TÜRÜ VE KATALOG YÖNETİMİ
+        function addNewMarketingType() {
+            const newType = prompt("Yeni Pazarlama Türü Adını Girin:");
+            if (newType && newType.trim() !== '') {
+                const trimmed = newType.trim();
+                if (!customMarketingTypes.includes(trimmed)) {
+                    customMarketingTypes.push(trimmed);
+                }
+                renderOpTypeDropdown(trimmed);
+            }
+        }
+
+        function renderOpTypeDropdown(selectedVal = '') {
+            const select = document.getElementById('opType');
+            if (!select) return;
+            select.innerHTML = '';
+            customMarketingTypes.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t;
+                opt.textContent = t;
+                if (selectedVal && selectedVal === t) opt.selected = true;
+                select.appendChild(opt);
+            });
+            handleOpTypeChange();
+        }
+
+        function addNewCatalogPrompt() {
+            const catName = prompt("Yeni Katalog Adını Girin:");
+            if (catName && catName.trim() !== '') {
+                const trimmed = catName.trim();
+                if (!catalogList.includes(trimmed)) {
+                    catalogList.push(trimmed);
+                }
+                renderCatalogDropdown(trimmed);
+            }
+        }
+
+        function deleteSelectedCatalogPrompt() {
+            const select = document.getElementById('opSelectedCatalog');
+            const selectedVal = select ? select.value : '';
+            if (!selectedVal) {
+                alert("Lütfen silmek istediğiniz kataloğu önce listeden seçin.");
+                return;
+            }
+            if (confirm(`"${selectedVal}" kataloğunu listeden silmek istediğinize emin misiniz?`)) {
+                catalogList = catalogList.filter(c => c !== selectedVal);
+                renderCatalogDropdown();
+            }
+        }
+
+        function renderCatalogDropdown(selectedVal = '') {
+            const select = document.getElementById('opSelectedCatalog');
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Katalog Seçin --</option>';
+            catalogList.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                if (selectedVal && selectedVal === c) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function handleOpTypeChange() {
+            const type = document.getElementById('opType').value;
+            const catalogContainer = document.getElementById('catalogSelectContainer');
+            if (type === 'Katalog Gönderimi') {
+                catalogContainer.classList.remove('hidden');
+                renderCatalogDropdown();
+            } else {
+                catalogContainer.classList.add('hidden');
+            }
+        }
+
+        // ÇOKLU E-POSTA SEÇİM KUTUCUKLARINI DOLDURMA
+        function updateOpContactOptions() {
+            const companyId = document.getElementById('opCompanyId').value;
+            const checkboxesContainer = document.getElementById('opEmailCheckboxes');
+            
+            if (!checkboxesContainer) return;
+            checkboxesContainer.innerHTML = '';
+            
+            const comp = companies.find(c => c.id === companyId);
+            if (!comp) {
+                checkboxesContainer.innerHTML = '<p class="text-slate-400 text-xs italic">Firma seçilmedi.</p>';
+                return;
+            }
+
+            let emailItems = [];
+
+            if (comp.contacts && Array.isArray(comp.contacts)) {
+                comp.contacts.forEach(cnt => {
+                    if (cnt.email && cnt.email.trim()) {
+                        emailItems.push({ email: cnt.email.trim(), label: `${cnt.name || 'Yetkili'} (${cnt.email.trim()})` });
+                    }
+                });
+            }
+
+            if (comp.email) {
+                const rawEmails = comp.email.split(/[,;]+/).map(e => e.trim()).filter(e => e);
+                rawEmails.forEach(e => {
+                    if (!emailItems.some(item => item.email === e)) {
+                        emailItems.push({ email: e, label: e });
+                    }
+                });
+            }
+
+            if (emailItems.length === 0) {
+                checkboxesContainer.innerHTML = '<p class="text-amber-600 text-xs italic">Bu firmaya ait kayıtlı e-posta adresi bulunamadı.</p>';
+                return;
+            }
+
+            emailItems.forEach((item, index) => {
+                const id = `op-email-cb-${index}`;
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-2 text-xs bg-white p-1.5 rounded border border-slate-200';
+                div.innerHTML = `
+                    <input type="checkbox" id="${id}" value="${item.email}" class="op-email-checkbox rounded text-brand-600 focus:ring-brand-500">
+                    <label for="${id}" class="text-slate-700 font-medium cursor-pointer">${item.label}</label>
+                `;
+                checkboxesContainer.appendChild(div);
+            });
+        }
+
+        // SAVE & EDIT OPERATION
+        
+
+        function renderNoResponseAlerts() {
+            const container = document.getElementById('no-response-list');
+            const badge = document.getElementById('no-resp-badge');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const searchInput = document.getElementById('alertSearch');
+            const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+            let pendingOps = operations.filter(o => o.hasResponse === 'Hayır');
+            
+            if (query) {
+                pendingOps = pendingOps.filter(op => {
+                    const comp = companies.find(c => c.id === op.companyId) || { name: '' };
+                    return comp.name.toLowerCase().includes(query) || 
+                           (op.notes && op.notes.toLowerCase().includes(query)) ||
+                           (op.targetContact && op.targetContact.toLowerCase().includes(query)) ||
+                           (op.type && op.type.toLowerCase().includes(query));
+                });
+            }
+
+            badge.textContent = operations.filter(o => o.hasResponse === 'Hayır').length;
+
+            if (pendingOps.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">Aramanıza uygun veya geri dönüş bekleyen operasyon kaydı bulunmuyor.</div>`;
+                return;
+            }
+
+            pendingOps.forEach(op => {
+                const comp = companies.find(c => c.id === op.companyId) || { name: 'Bilinmeyen Firma' };
+                const daysDiff = Math.floor((new Date() - new Date(op.date)) / (1000 * 60 * 60 * 24));
+
+                const div = document.createElement('div');
+                div.className = 'p-3 rounded-xl border border-rose-200 bg-rose-50/60 shadow-sm hover:shadow transition flex flex-col gap-1.5 text-xs';
+                div.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                            <span class="font-bold text-slate-900 text-xs">${comp.name}</span>
+                        </div>
+                        <span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200">
+                            ${daysDiff} Gün Geçti
+                        </span>
+                    </div>
+                    
+                    <div class="text-slate-600 flex items-center justify-between text-[11px]">
+                        <span><b>Tür:</b> ${op.type}</span>
+                        <span class="text-slate-500 truncate max-w-[150px]" title="${op.targetContact || ''}"><b>Kanal:</b> ${op.targetContact || 'Yetkili'}</span>
+                    </div>
+
+                    ${op.notes ? `<div class="text-slate-600 italic text-[11px] bg-white/80 p-2 rounded-lg border border-rose-100 whitespace-pre-line leading-relaxed">${op.notes}</div>` : ''}
+
+                    <div class="pt-1 flex items-center justify-between border-t border-rose-100 mt-0.5">
+                        <button onclick="editOperation('${op.id}')" class="text-indigo-600 hover:text-indigo-800 font-bold text-[11px] flex items-center gap-1">
+                            <i data-lucide="edit-3" class="w-3 h-3"></i> Güncelle / Cevap Gir
+                        </button>
+                        <button onclick="openCompanyDetail('${comp.id}')" class="text-brand-600 hover:underline font-semibold text-[11px] flex items-center gap-0.5">
+                            Firma Kartı <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        // DÜZELTİLMİŞ EDIT OPERATION FONKSİYONU
+        function editOperation(id) {
+            const op = operations.find(o => o.id === id);
+            if (!op) return;
+
+            document.getElementById('opId').value = op.id;
+
+            // 1. Veritabanındaki eski "Katalog / Broşür Gönderimi" metnini otomatik "Katalog Gönderimi"ne dönüştür
+            let opTypeVal = op.type;
+            if (opTypeVal === 'Katalog / Broşür Gönderimi') {
+                opTypeVal = 'Katalog Gönderimi';
+            }
+
+            customMarketingTypes = customMarketingTypes.map(t => t === 'Katalog / Broşür Gönderimi' ? 'Katalog Gönderimi' : t);
+
+            const companySelect = document.getElementById('opCompanyId');
+            if (companySelect) {
+                companySelect.innerHTML = '';
+                companies.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = `${c.name} (${c.sector || 'Sektörsüz'})`;
+                    if (c.id === op.companyId) opt.selected = true;
+                    companySelect.appendChild(opt);
+                });
+                companySelect.value = op.companyId;
+            }
+
+            if (opTypeVal && !customMarketingTypes.includes(opTypeVal)) {
+                customMarketingTypes.push(opTypeVal);
+            }
+            renderOpTypeDropdown(opTypeVal);
+
+            updateOpContactOptions();
+
+            // 2. Kutucukları işaretle ve onay kutusunda yer alan adresleri alt metin kutusundan temizle (Mükerrerliği önler)
+            let remainingContacts = op.targetContact || '';
+            document.querySelectorAll('.op-email-checkbox').forEach(cb => {
+                if (cb.value && remainingContacts.includes(cb.value)) {
+                    cb.checked = true;
+                    remainingContacts = remainingContacts.replace(cb.value, '');
+                }
+            });
+
+            // Alt metin kutusunda sadece ekstra manuel girilmiş adres varsa bırak
+            remainingContacts = remainingContacts.replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ', ');
+            document.getElementById('opTargetContact').value = remainingContacts;
+
+            document.getElementById('opDate').value = op.date || '';
+            document.getElementById('opHasResponse').value = op.hasResponse || 'Hayır';
+            document.getElementById('opResponseType').value = op.responseType || 'Beklemede';
+            document.getElementById('opAssignee').value = formatAssignee(op.assignee);
+            document.getElementById('opNotes').value = op.notes || '';
+
+            document.getElementById('operationModalTitle').textContent = 'Pazarlama Operasyonunu Güncelle';
+            document.getElementById('operationModal').classList.remove('hidden');
+        }
+
+        async function saveOperation(e) {
+            e.preventDefault();
+            const id = document.getElementById('opId').value || 'op-' + Date.now();
+            
+            const selectedEmails = [];
+            document.querySelectorAll('.op-email-checkbox:checked').forEach(cb => {
+                if (cb.value) selectedEmails.push(cb.value.trim());
+            });
+
+            const manualContact = document.getElementById('opTargetContact').value.trim();
+            if (manualContact) {
+                manualContact.split(/[,;]+/).forEach(m => {
+                    const trimmed = m.trim();
+                    if (trimmed) selectedEmails.push(trimmed);
+                });
+            }
+
+            // Mükerrer e-posta kayıtlarını tamamen engeller (Deduplication)
+            const uniqueEmails = [...new Set(selectedEmails)];
+            const targetContactStr = uniqueEmails.join(', ') || 'İletişim Adresi Belirtilmedi';
+
+            const opType = document.getElementById('opType').value;
+            let notes = document.getElementById('opNotes').value;
+
+            if (opType === 'Katalog Gönderimi') {
+                const selectedCat = document.getElementById('opSelectedCatalog').value;
+                if (selectedCat && !notes.includes(`[Gönderilen Katalog: ${selectedCat}]`)) {
+                    notes = `[Gönderilen Katalog: ${selectedCat}]\n${notes}`;
+                }
+            }
+
+            const data = {
+                companyId: document.getElementById('opCompanyId').value,
+                date: document.getElementById('opDate').value,
+                type: opType,
+                assignee: formatAssignee(document.getElementById('opAssignee').value),
+                targetContact: targetContactStr,
+                hasResponse: document.getElementById('opHasResponse').value,
+                responseType: document.getElementById('opResponseType').value,
+                notes: notes,
+                updatedAt: new Date().toISOString()
+            };
+
+            try {
+                await db.collection('operations').doc(id).set(data, { merge: true });
+                closeOperationModal();
+            } catch (err) {
+                alert("Operasyon kaydedilirken bir hata oluştu: " + err.message);
+            }
+        }    
+
+        
+        async function deleteOperation(id) {
+            if (!confirm('Bu operasyon kaydını silmek istediğinize emin misiniz?')) return;
+            try {
+                await db.collection('operations').doc(id).delete();
+            } catch (err) {
+                alert("Operasyon silinirken bir hata oluştu: " + err.message);
+            }
+        }
+
+        // VIEW DETAILS MODAL
+        function openCompanyDetail(id) {
+            const c = companies.find(item => item.id === id);
+            if (!c) return;
+
+            document.getElementById('detailCompName').textContent = c.name;
+            document.getElementById('detailCompSector').textContent = `${c.sector || 'Sektör Belirtilmedi'} - ${c.location || ''}`;
+            document.getElementById('detailAssignee').textContent = formatAssignee(c.assignee);
+            document.getElementById('detailPhone').textContent = c.phone || '-';
+            document.getElementById('detailLocation').textContent = c.location || '-';
+            
+            const contactListEl = document.getElementById('detailContactList');
+            contactListEl.innerHTML = '';
+            if (c.contacts && Array.isArray(c.contacts) && c.contacts.length > 0) {
+                c.contacts.forEach(cnt => {
+                    const item = document.createElement('div');
+                    item.className = 'text-xs text-slate-800 font-medium';
+                    item.innerHTML = `• ${cnt.name || 'İsimsiz'} ${cnt.title ? `<span class="text-slate-500">(${cnt.title})</span>` : ''}`;
+                    contactListEl.appendChild(item);
+                });
+            } else {
+                contactListEl.textContent = c.contact || 'Belirtilmedi';
+            }
+
+            const emailListEl = document.getElementById('detailEmailList');
+            emailListEl.innerHTML = '';
+            let emailsArr = [];
+            if (c.contacts && Array.isArray(c.contacts)) {
+                c.contacts.forEach(cnt => { if (cnt.email) emailsArr.push(cnt.email); });
+            }
+            if (c.email) {
+                c.email.split(/[,;]+/).forEach(e => { if (e.trim() && !emailsArr.includes(e.trim())) emailsArr.push(e.trim()); });
+            }
+
+            if (emailsArr.length > 0) {
+                emailsArr.forEach(em => {
+                    const badge = document.createElement('a');
+                    badge.href = `mailto:${em}`;
+                    badge.className = 'px-2 py-1 bg-brand-50 text-brand-700 border border-brand-200 rounded text-[11px] font-medium hover:underline break-all';
+                    badge.textContent = em;
+                    emailListEl.appendChild(badge);
+                });
+            } else {
+                emailListEl.textContent = '-';
+            }
+
+            const statusEl = document.getElementById('detailStatus');
+            statusEl.textContent = c.status;
+            statusEl.className = `px-2 py-0.5 rounded-full font-semibold text-[11px] ${getStatusBadgeClass(c.status)}`;
+
+            const webEl = document.getElementById('detailWebsite');
+            const webNone = document.getElementById('detailWebsiteNone');
+            if (c.website) { webEl.href = c.website; webEl.classList.remove('hidden'); webNone.classList.add('hidden'); }
+            else { webEl.classList.add('hidden'); webNone.classList.remove('hidden'); }
+
+            const linkEl = document.getElementById('detailLinkedin');
+            const linkNone = document.getElementById('detailLinkedinNone');
+            if (c.linkedin) { linkEl.href = c.linkedin; linkEl.classList.remove('hidden'); linkNone.classList.add('hidden'); }
+            else { linkEl.classList.add('hidden'); linkNone.classList.remove('hidden'); }
+
+            document.getElementById('detailResearchNote').textContent = c.researchNote || 'Araştırma notu girilmemiş.';
+
+            const compOps = operations.filter(o => o.companyId === c.id).sort((a,b) => new Date(b.date) - new Date(a.date));
+            const timeline = document.getElementById('detailOpsTimeline');
+            timeline.innerHTML = '';
+
+            if (compOps.length === 0) {
+                timeline.innerHTML = `<p class="text-slate-400 text-xs italic">Henüz bu firmaya yapılmış bir pazarlama hareketi yok.</p>`;
+            } else {
+                compOps.forEach(op => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1';
+                    item.innerHTML = `
+                        <div class="flex items-center justify-between font-semibold text-slate-800">
+                            <span>${op.date} - ${op.type}</span>
+                            <div class="flex items-center gap-2">
+                                ${op.hasResponse === 'Evet' 
+                                    ? '<span class="text-emerald-600 font-bold">Yanıt Alındı</span>' 
+                                    : '<span class="text-amber-600 font-bold">Yanıt Bekleniyor</span>'}
+                                <button onclick="closeCompanyDetailModal(); editOperation('${op.id}');" class="text-indigo-600 hover:underline text-[11px] ml-2">Düzenle/Güncelle</button>
+                            </div>
+                        </div>
+                        <div class="text-slate-600"><span class="font-medium">Hedef/Adres:</span> ${op.targetContact || '-'}</div>
+                        <div class="text-slate-600"><span class="font-medium">Sonuç:</span> ${op.responseType}</div>
+                        ${op.notes ? `<div class="text-slate-500 italic mt-1 bg-white p-2 rounded border border-slate-100 whitespace-pre-line">${op.notes}</div>` : ''}
+                    `;
+                    timeline.appendChild(item);
+                });
+            }
+
+            document.getElementById('addOpFromDetailBtn').onclick = () => {
+                closeCompanyDetailModal();
+                openOperationModal(c.id);
+            };
+
+            document.getElementById('companyDetailModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        // MODAL AÇMA VE KAPATMA / İPTAL FONKSİYONLARI
+        function openCompanyModal() {
+            document.getElementById('companyForm').reset();
+            document.getElementById('companyId').value = '';
+            document.getElementById('companyModalTitle').textContent = 'Yeni Müşteri/Firma Ekle';
+            
+            const container = document.getElementById('contactsListContainer');
+            if (container) {
+                container.innerHTML = '';
+                addContactRow();
+            }
+
+            document.getElementById('companyModal').classList.remove('hidden');
+        }
+
+        function closeCompanyModal() {
+            document.getElementById('companyModal').classList.add('hidden');
+        }
+
+        function openOperationModal(preselectedCompanyId = null) {
+            document.getElementById('operationForm').reset();
+            document.getElementById('opId').value = ''; 
+            document.getElementById('opTargetContact').value = '';
+            document.getElementById('operationModalTitle').textContent = 'Pazarlama Operasyonu / Temas Kaydı';
+            document.getElementById('opDate').value = new Date().toISOString().split('T')[0];
+
+            renderOpTypeDropdown();
+
+            const select = document.getElementById('opCompanyId');
+            select.innerHTML = '';
+            companies.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.name} (${c.sector || 'Sektörsüz'})`;
+                if (preselectedCompanyId && preselectedCompanyId === c.id) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            updateOpContactOptions();
+
+            document.getElementById('operationModal').classList.remove('hidden');
+        }
+
+        function closeOperationModal() {
+            document.getElementById('opId').value = '';
+            document.getElementById('operationModal').classList.add('hidden');
+        }
+
+        function closeCompanyDetailModal() {
+            document.getElementById('companyDetailModal').classList.add('hidden');
+        }
+
+        // TOPLU YÜKLEME (BULK UPLOAD) FONKSİYONLARI
+        function openBulkUploadModal() { 
+            document.getElementById('bulkUploadModal').classList.remove('hidden'); 
+        }
+
+        function closeBulkUploadModal() { 
+            document.getElementById('bulkUploadModal').classList.add('hidden'); 
+            const csvInput = document.getElementById('bulkCsvInput');
+            if (csvInput) csvInput.value = ''; 
+        }
+
+        function downloadTemplate() {
+            // Excel'de ayrı sütunlara ayrılması için ayırıcı olarak noktalı virgül (;) kullanıyoruz
+            const headers = "Firma Unvani;Sektor;Yetkili Kisi;Gorev Unvani;E-Posta;Telefon;Ulke/Bolge;LinkedIn Linki;Musteri Durumu;Arastirma Notu\n";
+            const sample = "Ornek Firma AS;Aluminyum Haddeleme;Ahmet Yilmaz;Satinalma Muduru;ahmet@ornek.com;+905554443322;Turkiye;https://linkedin.com;Potansiyel;Ornek not\n";
+            
+            const blob = new Blob(["\uFEFF" + headers + sample], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.setAttribute("href", URL.createObjectURL(blob));
+            link.setAttribute("download", "Spool_Toplu_Firma_Sablonu.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        async function handleBulkUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const text = event.target.result;
+                const rows = text.split('\n');
+                const batch = db.batch();
+                let count = 0;
+
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i].trim();
+                    if (!row) continue;
+                    
+                    // Hem noktalı virgül (;) hem de virgül (,) kullanımını otomatik tespit eder
+                    const delimiter = row.includes(';') ? ';' : ',';
+                    const cols = row.split(delimiter).map(col => col.trim().replace(/^"(.*)"$/, '$1'));
+                    if (cols.length < 2) continue;
+
+                    const docRef = db.collection('companies').doc();
+                    batch.set(docRef, {
+                        name: cols[0] || 'İsimsiz Firma',
+                        sector: cols[1] || 'Diğer',
+                        contact: cols[2] || '',
+                        title: cols[3] || '',
+                        email: cols[4] || '',
+                        phone: cols[5] || '',
+                        location: cols[6] || '',
+                        linkedin: cols[7] || '',
+                        status: cols[8] || 'Potansiyel',
+                        researchNote: cols[9] || '',
+                        createdAt: new Date().toISOString()
+                    });
+                    count++;
+                }
+                
+                if (count > 0) {
+                    try {
+                        await batch.commit();
+                        alert(count + ' adet firma başarıyla veritabanına eklendi!');
+                        closeBulkUploadModal();
+                    } catch(err) {
+                        alert('Yükleme hatası (Yetki/Bağlantı): ' + err.message);
+                    }
+                } else {
+                    alert('Eklenecek geçerli satır bulunamadı.');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+    </script>
+</body>
+</html>
