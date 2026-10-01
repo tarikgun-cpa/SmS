@@ -326,9 +326,19 @@
                 </div>
             </section>
 
-            <!-- TAB 4: RESEARCH DATABANK -->
+            <!-- TAB 4: RESEARCH DATABANK (PDF'DEKİ NOTLAR & KAYNAKLAR İÇİN) -->
             <section id="tab-databank" class="tab-content hidden space-y-4">
-                ...
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
+                        <i data-lucide="book-open" class="w-5 h-5 text-brand-600"></i>
+                        Pazar Araştırma Notları & Açık Kaynak Veri Bankası
+                    </h3>
+                    <p class="text-xs text-slate-500 mb-4">PDF araştırmasında elde edilen unvan, LinkedIn, haddeleme sektörü bulguları ve firma yönlendirme notları.</p>
+                    
+                    <div class="space-y-3" id="databank-notes-list">
+                        <!-- Dynamic Research Notes from Companies -->
+                    </div>
+                </div>
             </section>
 
             <!-- TAB 5: DÜNYA PAZARLAMA HARİTASI -->
@@ -1102,6 +1112,7 @@
         // RENDER RESEARCH DATABANK NOTES
         function renderDatabankNotes() {
             const list = document.getElementById('databank-notes-list');
+            if (!list) return;
             list.innerHTML = '';
 
             const compsWithNotes = companies.filter(c => c.researchNote && c.researchNote.trim() !== '');
