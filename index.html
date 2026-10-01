@@ -124,6 +124,10 @@
                     <i data-lucide="database" class="w-4 h-4"></i>
                     Araştırma Veri Bankası
                 </button>
+                <button onclick="switchTab('map')" id="nav-map" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                    <i data-lucide="globe" class="w-4 h-4"></i>
+                    Pazarlama Haritası
+                </button>
             </div>
 
             
@@ -322,17 +326,35 @@
                 </div>
             </section>
 
-            <!-- TAB 4: RESEARCH DATABANK (PDF'DEKİ NOTLAR & KAYNAKLAR İÇİN) -->
+            <!-- TAB 4: RESEARCH DATABANK -->
             <section id="tab-databank" class="tab-content hidden space-y-4">
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
-                        <i data-lucide="book-open" class="w-5 h-5 text-brand-600"></i>
-                        Pazar Araştırma Notları & Açık Kaynak Veri Bankası
-                    </h3>
-                    <p class="text-xs text-slate-500 mb-4">PDF araştırmasında elde edilen unvan, LinkedIn, haddeleme sektörü bulguları ve firma yönlendirme notları.</p>
-                    
-                    <div class="space-y-3" id="databank-notes-list">
-                        <!-- Dynamic Research Notes from Companies -->
+                ...
+            </section>
+
+            <!-- TAB 5: DÜNYA PAZARLAMA HARİTASI -->
+            <section id="tab-map" class="tab-content hidden space-y-4">
+                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            <i data-lucide="globe" class="w-4 h-4 text-brand-600"></i>
+                            Küresel Müşteri & Pazarlama Operasyon Haritası
+                        </h3>
+                        <p class="text-xs text-slate-500">Pazarlama yapılan firmaların coğrafi dağılımı ve ülke bazlı temas haritası</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                    <div class="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-[600px] relative z-10">
+                        <div id="worldMap" class="w-full h-full"></div>
+                    </div>
+                    <div class="lg:col-span-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3 flex flex-col h-[600px]">
+                        <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider border-b border-slate-100 pb-2">Haritadaki Firmalar</h4>
+                        <div id="mapCompanyList" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-1">
+                            <!-- Dynamic Map Companies List -->
+                        </div>
                     </div>
                 </div>
             </section>
@@ -357,13 +379,12 @@
                         <input type="text" id="compName" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Örn: Gränges Americas / Noranda">
                     </div>
                     <div>
-                        <label class="block font-medium text-slate-700 mb-1">Sektör / İş Kolu</label>
-                        <select id="compSector" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                            <option value="Alüminyum Haddeleme">Alüminyum Haddeleme</option>
-                            <option value="Kablo & Tel">Kablo & Tel</option>
-                            <option value="Ambalaj & Folyo">Ambalaj & Folyo</option>
-                            <option value="Plastik & Makara">Plastik & Makara</option>
-                            <option value="Diğer">Diğer</option>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="font-medium text-slate-700">Sektör / İş Kolu *</label>
+                            <button type="button" onclick="addNewSectorPrompt()" class="text-[11px] text-brand-600 hover:underline font-semibold">+ Sektör Ekle</button>
+                        </div>
+                        <select id="compSector" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white">
+                            <!-- Dynamic Sector List -->
                         </select>
                     </div>
                 </div>
@@ -679,6 +700,17 @@
         let operations = [];
         let customMarketingTypes = ["Soğuk E-Posta", "LinkedIn Mesaj/InMail", "Telefon Görüşmesi", "Katalog Gönderimi", "Numune Spool Gönderimi", "Fuar / Yüz Yüze Ziyaret"];
         let catalogList = ["Spool Presentation 2026 PDF", "Ağır Hizmet Makara Kataloğu v1", "Alüminyum Haddeleme Spool Kataloğu"];
+        let customSectors = ["Alüminyum Haddeleme", "Kablo & Tel", "Ambalaj & Folyo", "Plastik & Makara", "Diğer"];
+        let leafletMap = null;
+        let mapMarkers = [];
+
+        // Ülke Koordinat Sözlüğü
+        const countryCoords = {
+            'turkey': [38.9637, 35.2433], 'türkiye': [38.9637, 35.2433], 'abd': [37.0902, -95.7129], 'usa': [37.0902, -95.7129], 'united states': [37.0902, -95.7129],
+            'germany': [51.1657, 10.4515], 'almanya': [51.1657, 10.4515], 'saudi arabia': [23.8859, 45.0792], 'suudi arabistan': [23.8859, 45.0792],
+            'italy': [41.8719, 12.5674], 'italya': [41.8719, 12.5674], 'uae': [23.4241, 53.8478], 'bae': [23.4241, 53.8478], 'united arab emirates': [23.4241, 53.8478],
+            'france': [46.2276, 2.2137], 'fransa': [46.2276, 2.2137], 'uk': [55.3781, -3.4360], 'ingiltere': [55.3781, -3.4360], 'spain': [40.4637, -3.7492], 'ispanya': [40.4637, -3.7492]
+        };
 
         // TEMSİLCİ EMOJİ EŞLEŞTİRME FONKSİYONU
         function formatAssignee(name) {
@@ -752,10 +784,79 @@
             }
 
             if (tabName === 'dashboard') renderCharts();
+            if (tabName === 'map') initWorldMap();
+        }
+
+        function initWorldMap() {
+            if (typeof leaflet === 'undefined' && typeof L === 'undefined') return;
+
+            if (!leafletMap) {
+                leafletMap = L.map('worldMap').setView([30, 10], 2);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 18,
+                    attribution: '© OpenStreetMap'
+                }).addTo(leafletMap);
+            }
+
+            // Temizle
+            mapMarkers.forEach(m => leafletMap.removeLayer(m));
+            mapMarkers = [];
+
+            const mapListContainer = document.getElementById('mapCompanyList');
+            if (mapListContainer) mapListContainer.innerHTML = '';
+
+            companies.forEach(c => {
+                const locKey = (c.location || '').toLowerCase().trim();
+                let coords = null;
+
+                for (let k in countryCoords) {
+                    if (locKey.includes(k)) {
+                        coords = countryCoords[k];
+                        break;
+                    }
+                }
+
+                // Rasgele küçük sapma ekleyelim ki aynı ülkedeki üst üste binmesin
+                if (coords) {
+                    const lat = coords[0] + (Math.random() - 0.5) * 1.5;
+                    const lng = coords[1] + (Math.random() - 0.5) * 1.5;
+
+                    const compOps = operations.filter(o => o.companyId === c.id);
+                    const marker = L.marker([lat, lng]).addTo(leafletMap);
+                    
+                    marker.bindPopup(`
+                        <div class="p-1 text-xs">
+                            <b class="text-sm text-slate-900 block">${c.name}</b>
+                            <span class="text-slate-500 block">${c.location || ''} - ${c.sector || ''}</span>
+                            <span class="text-brand-700 font-bold block mt-1">Sorumlu: ${formatAssignee(c.assignee)}</span>
+                            <span class="text-indigo-600 block mt-0.5">${compOps.length} Operasyon Yapıldı</span>
+                        </div>
+                    `);
+
+                    mapMarkers.push(marker);
+
+                    if (mapListContainer) {
+                        const item = document.createElement('div');
+                        item.className = 'p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-brand-50 cursor-pointer text-xs transition';
+                        item.onclick = () => {
+                            leafletMap.setView([lat, lng], 5);
+                            marker.openPopup();
+                        };
+                        item.innerHTML = `
+                            <div class="font-bold text-slate-900">${c.name}</div>
+                            <div class="text-[11px] text-slate-500">${c.location || 'Konum Yok'} | ${formatAssignee(c.assignee)}</div>
+                        `;
+                        mapListContainer.appendChild(item);
+                    }
+                }
+            });
+
+            setTimeout(() => { leafletMap.invalidateSize(); }, 300);
         }
 
         // REFRESH ALL UI COMPONENTS
         function refreshUI() {
+            renderSectorDropdowns();
             renderDashboardKPIs();
             renderCompanies();
             renderOperationsTable();
@@ -1146,11 +1247,51 @@
                 }
             }
 
+            renderSectorDropdowns(c.sector);
             document.getElementById('companyModalTitle').textContent = 'Firma Kartını Düzenle';
             document.getElementById('companyModal').classList.remove('hidden');
         }
 
-        // YENİ PAZARLAMA TÜRÜ VE KATALOG YÖNETİMİ
+        // YENİ SEKTÖR, PAZARLAMA TÜRÜ VE KATALOG YÖNETİMİ
+        function addNewSectorPrompt() {
+            const secName = prompt("Yeni Sektör / İş Kolu Adını Girin:");
+            if (secName && secName.trim() !== '') {
+                const trimmed = secName.trim();
+                if (!customSectors.includes(trimmed)) {
+                    customSectors.push(trimmed);
+                }
+                renderSectorDropdowns(trimmed);
+            }
+        }
+
+        function renderSectorDropdowns(selectedVal = '') {
+            const compSelect = document.getElementById('compSector');
+            const filterSelect = document.getElementById('filterSector');
+
+            if (compSelect) {
+                compSelect.innerHTML = '';
+                customSectors.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s;
+                    if (selectedVal && selectedVal === s) opt.selected = true;
+                    compSelect.appendChild(opt);
+                });
+            }
+
+            if (filterSelect) {
+                const currentFilter = filterSelect.value;
+                filterSelect.innerHTML = '<option value="">Tüm Sektörler / Segmentler</option>';
+                customSectors.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s;
+                    if (currentFilter === s || selectedVal === s) opt.selected = true;
+                    filterSelect.appendChild(opt);
+                });
+            }
+        }
+
         function addNewMarketingType() {
             const newType = prompt("Yeni Pazarlama Türü Adını Girin:");
             if (newType && newType.trim() !== '') {
@@ -1573,6 +1714,7 @@
                 addContactRow();
             }
 
+            renderSectorDropdowns();
             document.getElementById('companyModal').classList.remove('hidden');
         }
 
