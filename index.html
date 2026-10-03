@@ -60,6 +60,12 @@
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        /* Kurumsal Harita İşaretçi Stili */
+        .custom-corporate-pin {
+            background: transparent !important;
+            border: none !important;
+        }
     </style>
 </head>
 <body class="h-full flex flex-col text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
@@ -848,9 +854,12 @@
 
             if (!leafletMap) {
                 leafletMap = L.map('worldMap').setView([25, 15], 2);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 18,
-                    attribution: '© OpenStreetMap'
+                
+                // Kurumsal CARTO Voyager Harita Katmanı (Sade, Modern ve Yüksek Çözünürlüklü)
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 19,
+                    subdomains: 'abcd',
+                    attribution: '© OpenStreetMap © CARTO'
                 }).addTo(leafletMap);
             }
 
@@ -865,7 +874,6 @@
                 const combinedLocText = normalizeLocText((c.location || '') + ' ' + (c.name || ''));
                 let coords = null;
 
-                // Önce şehir/eyalet veya ülke eşleşmesini bul
                 for (let key in countryCoords) {
                     const normKey = normalizeLocText(key);
                     if (combinedLocText.includes(normKey)) {
@@ -877,12 +885,12 @@
                 // Operasyonlar ve son operasyon detayı
                 const compOps = operations.filter(o => o.companyId === c.id).sort((a,b) => new Date(b.date) - new Date(a.date));
                 const lastOp = compOps.length > 0 ? compOps[0] : null;
+                const isResponded = lastOp && lastOp.hasResponse === 'Evet';
 
                 let lastOpBadge = '';
                 let lastOpDetails = '<span class="text-slate-400 italic block mt-1">Henüz operasyon yapılmadı.</span>';
 
                 if (lastOp) {
-                    const isResponded = lastOp.hasResponse === 'Evet';
                     const responseBadge = isResponded 
                         ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">✔ Yanıt Alındı</span>'
                         : '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">⏳ Bekliyor</span>';
@@ -901,14 +909,33 @@
                     `;
                 }
 
-                // Eğer koordinat bulunduysa haritaya gerçek yerine pin koy
                 let marker = null;
                 if (coords) {
-                    // Üst üste binmeyi önlemek için küçük sapma ekliyoruz
                     const lat = coords[0] + (Math.random() - 0.5) * 1.2;
                     const lng = coords[1] + (Math.random() - 0.5) * 1.2;
 
-                    marker = L.marker([lat, lng]).addTo(leafletMap);
+                    // Kurumsal Özel Harita İşaretçisi (HTML & Tailwind Rozet)
+                    const markerBg = isResponded ? 'bg-emerald-600' : (compOps.length > 0 ? 'bg-brand-600' : 'bg-slate-700');
+                    const pulseBg = isResponded ? 'bg-emerald-400' : (compOps.length > 0 ? 'bg-brand-400' : 'bg-slate-400');
+                    
+                    const customMarkerHtml = `
+                        <div class="relative flex items-center justify-center group cursor-pointer">
+                            <span class="animate-ping absolute inline-flex h-7 w-7 rounded-full ${pulseBg} opacity-60"></span>
+                            <div class="relative inline-flex items-center justify-center w-7 h-7 rounded-full ${markerBg} text-white font-bold shadow-lg border-2 border-white text-[10px] transition group-hover:scale-110">
+                                ${compOps.length > 0 ? compOps.length : '<i data-lucide="building" class="w-3.5 h-3.5"></i>'}
+                            </div>
+                        </div>
+                    `;
+
+                    const customIcon = L.divIcon({
+                        html: customMarkerHtml,
+                        className: 'custom-corporate-pin',
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14],
+                        popupAnchor: [0, -14]
+                    });
+
+                    marker = L.marker([lat, lng], { icon: customIcon }).addTo(leafletMap);
                     
                     marker.bindPopup(`
                         <div class="p-1 text-xs min-w-[230px]">
@@ -943,7 +970,7 @@
                     item.innerHTML = `
                         <div class="flex items-center justify-between">
                             <b class="text-slate-900 truncate">${c.name}</b>
-                            <span class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded border border-indigo-100">${compOps.length} Op</span>
+                            <span class="text-[10px] ${isResponded ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-50 text-indigo-700 border-indigo-100'} font-bold px-1.5 py-0.5 rounded border">${compOps.length} Op</span>
                         </div>
                         <div class="text-[11px] text-slate-500 flex items-center justify-between">
                             <span>${c.location || 'Konum Yok'}</span>
@@ -953,8 +980,8 @@
                         ${lastOp ? `
                             <div class="text-[10px] text-slate-600 bg-white p-1.5 rounded border border-slate-200 mt-1 space-y-0.5">
                                 <div class="font-semibold text-slate-800"><b>Son Op:</b> ${lastOp.date} (${lastOp.type})</div>
-                                <div class="${lastOp.hasResponse === 'Evet' ? 'text-emerald-700' : 'text-amber-700'} font-bold">
-                                    ${lastOp.hasResponse === 'Evet' ? '✔ Yanıt Alındı' : '⏳ Yanıt Bekleniyor'}
+                                <div class="${isResponded ? 'text-emerald-700' : 'text-amber-700'} font-bold">
+                                    ${isResponded ? '✔ Yanıt Alındı' : '⏳ Yanıt Bekleniyor'}
                                 </div>
                             </div>
                         ` : '<div class="text-[10px] text-slate-400 italic">Henüz operasyon yok</div>'}
@@ -963,7 +990,10 @@
                 }
             });
 
-            setTimeout(() => { leafletMap.invalidateSize(); }, 300);
+            setTimeout(() => { 
+                leafletMap.invalidateSize(); 
+                lucide.createIcons();
+            }, 300);
         }
 
         // REFRESH ALL UI COMPONENTS
