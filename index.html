@@ -714,12 +714,23 @@
         let leafletMap = null;
         let mapMarkers = [];
 
-        // Ülke Koordinat Sözlüğü
+        // Genişletilmiş Ülke & Şehir Koordinat Sözlüğü
         const countryCoords = {
-            'turkey': [38.9637, 35.2433], 'türkiye': [38.9637, 35.2433], 'abd': [37.0902, -95.7129], 'usa': [37.0902, -95.7129], 'united states': [37.0902, -95.7129],
-            'germany': [51.1657, 10.4515], 'almanya': [51.1657, 10.4515], 'saudi arabia': [23.8859, 45.0792], 'suudi arabistan': [23.8859, 45.0792],
-            'italy': [41.8719, 12.5674], 'italya': [41.8719, 12.5674], 'uae': [23.4241, 53.8478], 'bae': [23.4241, 53.8478], 'united arab emirates': [23.4241, 53.8478],
-            'france': [46.2276, 2.2137], 'fransa': [46.2276, 2.2137], 'uk': [55.3781, -3.4360], 'ingiltere': [55.3781, -3.4360], 'spain': [40.4637, -3.7492], 'ispanya': [40.4637, -3.7492]
+            'turkey': [38.9637, 35.2433], 'türkiye': [38.9637, 35.2433], 'istanbul': [41.0082, 28.9784], 'kocaeli': [40.8533, 29.8815], 'izmir': [38.4237, 27.1428], 'ankara': [39.9334, 32.8597], 'bursa': [40.1885, 29.0610],
+            'abd': [37.0902, -95.7129], 'usa': [37.0902, -95.7129], 'united states': [37.0902, -95.7129], 'america': [37.0902, -95.7129], 'new york': [40.7128, -74.0060], 'chicago': [41.8781, -87.6298],
+            'germany': [51.1657, 10.4515], 'almanya': [51.1657, 10.4515], 'frankfurt': [50.1109, 8.6821], 'munich': [48.1351, 11.5820], 'münih': [48.1351, 11.5820], 'berlin': [52.5200, 13.4050],
+            'saudi arabia': [23.8859, 45.0792], 'suudi arabistan': [23.8859, 45.0792], 'riyadh': [24.7136, 46.6753], 'riyad': [24.7136, 46.6753], 'jeddah': [21.5433, 39.1728], 'cidde': [21.5433, 39.1728],
+            'italy': [41.8719, 12.5674], 'italya': [41.8719, 12.5674], 'milan': [45.4642, 9.1900], 'milano': [45.4642, 9.1900], 'rome': [41.9028, 12.4964], 'roma': [41.9028, 12.4964],
+            'uae': [23.4241, 53.8478], 'bae': [23.4241, 53.8478], 'united arab emirates': [23.4241, 53.8478], 'dubai': [25.2048, 55.2708], 'abu dhabi': [24.4539, 54.3773],
+            'france': [46.2276, 2.2137], 'fransa': [46.2276, 2.2137], 'paris': [48.8566, 2.3522],
+            'uk': [55.3781, -3.4360], 'ingiltere': [55.3781, -3.4360], 'birleşik krallık': [55.3781, -3.4360], 'london': [51.5074, -0.1278], 'londra': [51.5074, -0.1278],
+            'spain': [40.4637, -3.7492], 'ispanya': [40.4637, -3.7492], 'madrid': [40.4168, -3.7038], 'barcelona': [41.3851, 2.1734],
+            'norway': [60.4720, 8.4689], 'norveç': [60.4720, 8.4689], 'sweden': [60.1282, 18.6435], 'isveç': [60.1282, 18.6435], 'finland': [61.9241, 25.7482], 'finlandiya': [61.9241, 25.7482],
+            'netherlands': [52.1326, 5.2913], 'hollanda': [52.1326, 5.2913], 'belgium': [50.5039, 4.4699], 'belçika': [50.5039, 4.4699],
+            'austria': [47.5162, 14.5501], 'avusturya': [47.5162, 14.5501], 'switzerland': [46.8182, 8.2275], 'isviçre': [46.8182, 8.2275],
+            'poland': [51.9194, 19.1451], 'polonya': [51.9194, 19.1451], 'china': [35.8617, 104.1954], 'çin': [35.8617, 104.1954],
+            'india': [20.5937, 78.9629], 'hindistan': [20.5937, 78.9629], 'egypt': [26.8206, 30.8025], 'mısır': [26.8206, 30.8025],
+            'brazil': [-14.2350, -51.9253], 'brezilya': [-14.2350, -51.9253], 'canada': [56.1304, -106.3468], 'kanada': [56.1304, -106.3468]
         };
 
         // TEMSİLCİ EMOJİ EŞLEŞTİRME FONKSİYONU
@@ -826,38 +837,88 @@
                     }
                 }
 
-                // Rasgele küçük sapma ekleyelim ki aynı ülkedeki üst üste binmesin
-                if (coords) {
-                    const lat = coords[0] + (Math.random() - 0.5) * 1.5;
-                    const lng = coords[1] + (Math.random() - 0.5) * 1.5;
+                // Tanımsız konumlar için varsayılan merkez koordinatı
+                if (!coords) {
+                    coords = [42.0, 18.0];
+                }
 
-                    const compOps = operations.filter(o => o.companyId === c.id);
-                    const marker = L.marker([lat, lng]).addTo(leafletMap);
+                // Üst üste binmeyi önlemek için küçük sapma ekliyoruz
+                const lat = coords[0] + (Math.random() - 0.5) * 1.5;
+                const lng = coords[1] + (Math.random() - 0.5) * 1.5;
+
+                // İlgili firmaya ait tüm operasyonlar ve EN SON işlenen operasyon
+                const compOps = operations.filter(o => o.companyId === c.id).sort((a,b) => new Date(b.date) - new Date(a.date));
+                const lastOp = compOps.length > 0 ? compOps[0] : null;
+
+                let lastOpBadge = '';
+                let lastOpDetails = '<span class="text-slate-400 italic block mt-1">Henüz operasyon yapılmadı.</span>';
+
+                if (lastOp) {
+                    const isResponded = lastOp.hasResponse === 'Evet';
+                    const responseBadge = isResponded 
+                        ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">✔ Yanıt Alındı</span>'
+                        : '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">⏳ Bekliyor</span>';
+
+                    lastOpBadge = `<span class="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 rounded font-semibold text-[10px]">${compOps.length} Op</span>`;
                     
-                    marker.bindPopup(`
-                        <div class="p-1 text-xs">
-                            <b class="text-sm text-slate-900 block">${c.name}</b>
-                            <span class="text-slate-500 block">${c.location || ''} - ${c.sector || ''}</span>
-                            <span class="text-brand-700 font-bold block mt-1">Sorumlu: ${formatAssignee(c.assignee)}</span>
-                            <span class="text-indigo-600 block mt-0.5">${compOps.length} Operasyon Yapıldı</span>
+                    lastOpDetails = `
+                        <div class="mt-2 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
+                            <div class="flex items-center justify-between gap-1">
+                                <b class="text-slate-800">${lastOp.date} - ${lastOp.type}</b>
+                                ${responseBadge}
+                            </div>
+                            <div class="text-slate-600 truncate" title="${lastOp.targetContact || ''}"><b>Kanal:</b> ${lastOp.targetContact || '-'}</div>
+                            ${lastOp.notes ? `<div class="text-slate-500 italic bg-slate-50 p-1.5 rounded border border-slate-200 whitespace-pre-line line-clamp-2">${lastOp.notes}</div>` : ''}
                         </div>
-                    `);
+                    `;
+                }
 
-                    mapMarkers.push(marker);
+                const marker = L.marker([lat, lng]).addTo(leafletMap);
+                
+                marker.bindPopup(`
+                    <div class="p-1 text-xs min-w-[230px]">
+                        <div class="flex items-center justify-between gap-1">
+                            <b class="text-sm text-slate-900">${c.name}</b>
+                            ${lastOpBadge}
+                        </div>
+                        <span class="text-slate-500 block">${c.location || 'Konum Yok'} | ${c.sector || 'Sektörsüz'}</span>
+                        <span class="text-brand-700 font-bold block mt-1">Sorumlu: ${formatAssignee(c.assignee)}</span>
+                        ${lastOpDetails}
+                        <div class="mt-2 pt-1 border-t border-slate-100 text-right">
+                            <button onclick="openCompanyDetail('${c.id}')" class="text-brand-600 hover:underline font-bold text-[11px]">Firma Detayına Git →</button>
+                        </div>
+                    </div>
+                `);
 
-                    if (mapListContainer) {
-                        const item = document.createElement('div');
-                        item.className = 'p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-brand-50 cursor-pointer text-xs transition';
-                        item.onclick = () => {
-                            leafletMap.setView([lat, lng], 5);
-                            marker.openPopup();
-                        };
-                        item.innerHTML = `
-                            <div class="font-bold text-slate-900">${c.name}</div>
-                            <div class="text-[11px] text-slate-500">${c.location || 'Konum Yok'} | ${formatAssignee(c.assignee)}</div>
-                        `;
-                        mapListContainer.appendChild(item);
-                    }
+                mapMarkers.push(marker);
+
+                if (mapListContainer) {
+                    const item = document.createElement('div');
+                    item.className = 'p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-brand-50 cursor-pointer text-xs transition space-y-1 shadow-sm';
+                    item.onclick = () => {
+                        leafletMap.setView([lat, lng], 5);
+                        marker.openPopup();
+                    };
+                    
+                    item.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <b class="text-slate-900 truncate">${c.name}</b>
+                            <span class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded border border-indigo-100">${compOps.length} Op</span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 flex items-center justify-between">
+                            <span>${c.location || 'Konum Yok'}</span>
+                            <span class="font-semibold text-brand-700">${formatAssignee(c.assignee)}</span>
+                        </div>
+                        ${lastOp ? `
+                            <div class="text-[10px] text-slate-600 bg-white p-1.5 rounded border border-slate-200 mt-1 space-y-0.5">
+                                <div class="font-semibold text-slate-800"><b>Son Op:</b> ${lastOp.date} (${lastOp.type})</div>
+                                <div class="${lastOp.hasResponse === 'Evet' ? 'text-emerald-700' : 'text-amber-700'} font-bold">
+                                    ${lastOp.hasResponse === 'Evet' ? '✔ Yanıt Alındı' : '⏳ Yanıt Bekleniyor'}
+                                </div>
+                            </div>
+                        ` : '<div class="text-[10px] text-slate-400 italic">Henüz operasyon yok</div>'}
+                    `;
+                    mapListContainer.appendChild(item);
                 }
             });
 
@@ -873,6 +934,7 @@
             renderDatabankNotes();
             renderNoResponseAlerts();
             renderCharts();
+            if (leafletMap) initWorldMap();
             lucide.createIcons();
         }
 
