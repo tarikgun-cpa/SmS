@@ -849,13 +849,18 @@
                 .replace(/[^a-z0-9\s]/g, ' ');
         }
 
+        function getCompanyShortCode(name) {
+            const clean = (name || '').replace(/[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ]/g, '').toUpperCase();
+            return clean.length >= 3 ? clean.substring(0, 3) : (clean + '   ').substring(0, 3);
+        }
+
         function initWorldMap() {
             if (typeof leaflet === 'undefined' && typeof L === 'undefined') return;
 
             if (!leafletMap) {
                 leafletMap = L.map('worldMap').setView([25, 15], 2);
                 
-                // Kurumsal Esri Light Gray Harita Katmanı (Ücretsiz, API Key Gerektirmez)
+                // Esri Light Gray Harita Katmanı (Temiz, Ücretsiz)
                 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                     maxZoom: 16,
                     attribution: 'Tiles © Esri'
@@ -869,7 +874,22 @@
             const mapListContainer = document.getElementById('mapCompanyList');
             if (mapListContainer) mapListContainer.innerHTML = '';
 
-            companies.forEach(c => {
+            // SADECE EN AZ 1 PAZARLAMA OPERASYONU YAPILMIŞ FİRMALARI AL
+            const companiesWithOps = companies.filter(c => {
+                const compOps = operations.filter(o => o.companyId === c.id);
+                return compOps.length > 0;
+            });
+
+            if (companiesWithOps.length === 0) {
+                if (mapListContainer) {
+                    mapListContainer.innerHTML = '<div class="text-center py-10 text-slate-400 text-xs italic">Henüz pazarlama operasyonu yapılmış firma bulunmuyor.</div>';
+                }
+                return;
+            }
+
+            // Firmaları Temel Koordinatlarına Göre Grupla (Üst Üste Binmeyi Önlemek İçin)
+            const coordGroups = {};
+            companiesWithOps.forEach(c => {
                 const combinedLocText = normalizeLocText((c.location || '') + ' ' + (c.name || ''));
                 let coords = null;
 
@@ -881,109 +901,127 @@
                     }
                 }
 
-                // Operasyonlar ve son operasyon detayı
+                if (!coords) {
+                    coords = [38.9637, 35.2433]; // Türkiye varsayılan
+                }
+
+                const groupKey = coords[0].toFixed(3) + ',' + coords[1].toFixed(3);
+                if (!coordGroups[groupKey]) coordGroups[groupKey] = [];
+                coordGroups[groupKey].push({ company: c, baseCoords: coords });
+            });
+
+            // Aynı Bölgedeki Pinleri Dairesel/Spiral Şekilde Dağıt
+            const positionedItems = [];
+            for (let gKey in coordGroups) {
+                const group = coordGroups[gKey];
+                group.forEach((item, index) => {
+                    let lat = item.baseCoords[0];
+                    let lng = item.baseCoords[1];
+
+                    if (group.length > 1) {
+                        const angle = (index / group.length) * 2 * Math.PI;
+                        const radius = 1.2 + (index * 0.25); // Haritada üst üste binmeyecek şekilde yayılır
+                        lat += Math.sin(angle) * radius;
+                        lng += Math.cos(angle) * radius * 1.4;
+                    }
+
+                    item.lat = lat;
+                    item.lng = lng;
+                    positionedItems.push(item);
+                });
+            }
+
+            // Harita İşaretçilerini ve Sağ Paneli Oluştur
+            positionedItems.forEach(item => {
+                const c = item.company;
+                const lat = item.lat;
+                const lng = item.lng;
+
                 const compOps = operations.filter(o => o.companyId === c.id).sort((a,b) => new Date(b.date) - new Date(a.date));
-                const lastOp = compOps.length > 0 ? compOps[0] : null;
+                const lastOp = compOps[0]; 
                 const isResponded = lastOp && lastOp.hasResponse === 'Evet';
 
-                let lastOpBadge = '';
-                let lastOpDetails = '<span class="text-slate-400 italic block mt-1">Henüz operasyon yapılmadı.</span>';
+                const shortCode = getCompanyShortCode(c.name);
+                const statusEmoji = isResponded ? '✅' : '⏳';
+                const markerBg = isResponded ? 'bg-emerald-600' : 'bg-amber-600';
+                const pulseBg = isResponded ? 'bg-emerald-400' : 'bg-amber-400';
 
-                if (lastOp) {
-                    const responseBadge = isResponded 
-                        ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">✔ Yanıt Alındı</span>'
-                        : '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">⏳ Bekliyor</span>';
-
-                    lastOpBadge = `<span class="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 rounded font-semibold text-[10px]">${compOps.length} Op</span>`;
-                    
-                    lastOpDetails = `
-                        <div class="mt-2 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
-                            <div class="flex items-center justify-between gap-1">
-                                <b class="text-slate-800">${lastOp.date} - ${lastOp.type}</b>
-                                ${responseBadge}
-                            </div>
-                            <div class="text-slate-600 truncate" title="${lastOp.targetContact || ''}"><b>Kanal:</b> ${lastOp.targetContact || '-'}</div>
-                            ${lastOp.notes ? `<div class="text-slate-500 italic bg-slate-50 p-1.5 rounded border border-slate-200 whitespace-pre-line line-clamp-2">${lastOp.notes}</div>` : ''}
+                // Rozette Operasyon Sayısı Yerine 3 Harfli Kod ve Durum Simgesi
+                const customMarkerHtml = `
+                    <div class="relative flex items-center justify-center group cursor-pointer">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full ${pulseBg} opacity-40"></span>
+                        <div class="relative inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${markerBg} text-white font-bold shadow-md border-2 border-white text-[11px] whitespace-nowrap transition group-hover:scale-110">
+                            <span>${statusEmoji}</span>
+                            <span>${shortCode}</span>
                         </div>
-                    `;
-                }
+                    </div>
+                `;
 
-                let marker = null;
-                if (coords) {
-                    const lat = coords[0] + (Math.random() - 0.5) * 1.2;
-                    const lng = coords[1] + (Math.random() - 0.5) * 1.2;
+                const customIcon = L.divIcon({
+                    html: customMarkerHtml,
+                    className: 'custom-corporate-pin',
+                    iconSize: [52, 24],
+                    iconAnchor: [26, 12],
+                    popupAnchor: [0, -12]
+                });
 
-                    // Kurumsal Özel Harita İşaretçisi (HTML & Tailwind Rozet)
-                    const markerBg = isResponded ? 'bg-emerald-600' : (compOps.length > 0 ? 'bg-brand-600' : 'bg-slate-700');
-                    const pulseBg = isResponded ? 'bg-emerald-400' : (compOps.length > 0 ? 'bg-brand-400' : 'bg-slate-400');
-                    
-                    const customMarkerHtml = `
-                        <div class="relative flex items-center justify-center group cursor-pointer">
-                            <span class="animate-ping absolute inline-flex h-7 w-7 rounded-full ${pulseBg} opacity-60"></span>
-                            <div class="relative inline-flex items-center justify-center w-7 h-7 rounded-full ${markerBg} text-white font-bold shadow-lg border-2 border-white text-[10px] transition group-hover:scale-110">
-                                ${compOps.length > 0 ? compOps.length : '<i data-lucide="building" class="w-3.5 h-3.5"></i>'}
-                            </div>
+                const marker = L.marker([lat, lng], { icon: customIcon }).addTo(leafletMap);
+
+                const responseBadge = isResponded 
+                    ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">✔ Yanıt Alındı</span>'
+                    : '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">⏳ Bekliyor</span>';
+
+                const lastOpDetails = `
+                    <div class="mt-2 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
+                        <div class="flex items-center justify-between gap-1">
+                            <b class="text-slate-800">${lastOp.date} - ${lastOp.type}</b>
+                            ${responseBadge}
                         </div>
-                    `;
+                        <div class="text-slate-600 truncate" title="${lastOp.targetContact || ''}"><b>Kanal:</b> ${lastOp.targetContact || '-'}</div>
+                        ${lastOp.notes ? `<div class="text-slate-500 italic bg-slate-50 p-1.5 rounded border border-slate-200 whitespace-pre-line line-clamp-2">${lastOp.notes}</div>` : ''}
+                    </div>
+                `;
 
-                    const customIcon = L.divIcon({
-                        html: customMarkerHtml,
-                        className: 'custom-corporate-pin',
-                        iconSize: [28, 28],
-                        iconAnchor: [14, 14],
-                        popupAnchor: [0, -14]
-                    });
-
-                    marker = L.marker([lat, lng], { icon: customIcon }).addTo(leafletMap);
-                    
-                    marker.bindPopup(`
-                        <div class="p-1 text-xs min-w-[230px]">
-                            <div class="flex items-center justify-between gap-1">
-                                <b class="text-sm text-slate-900">${c.name}</b>
-                                ${lastOpBadge}
-                            </div>
-                            <span class="text-slate-500 block">${c.location || 'Konum Yok'} | ${c.sector || 'Sektörsüz'}</span>
-                            <span class="text-brand-700 font-bold block mt-1">Sorumlu: ${formatAssignee(c.assignee)}</span>
-                            ${lastOpDetails}
-                            <div class="mt-2 pt-1 border-t border-slate-100 text-right">
-                                <button onclick="openCompanyDetail('${c.id}')" class="text-brand-600 hover:underline font-bold text-[11px]">Firma Detayına Git →</button>
-                            </div>
+                marker.bindPopup(`
+                    <div class="p-1 text-xs min-w-[240px]">
+                        <div class="flex items-center justify-between gap-1">
+                            <b class="text-sm text-slate-900">${c.name}</b>
+                            <span class="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 rounded font-semibold text-[10px]">${compOps.length} Op</span>
                         </div>
-                    `);
+                        <span class="text-slate-500 block">${c.location || 'Konum Yok'} | ${c.sector || 'Sektörsüz'}</span>
+                        <span class="text-brand-700 font-bold block mt-1">Sorumlu: ${formatAssignee(c.assignee)}</span>
+                        ${lastOpDetails}
+                        <div class="mt-2 pt-1 border-t border-slate-100 text-right">
+                            <button onclick="openCompanyDetail('${c.id}')" class="text-brand-600 hover:underline font-bold text-[11px]">Firma Detayına Git →</button>
+                        </div>
+                    </div>
+                `);
 
-                    mapMarkers.push(marker);
-                }
+                mapMarkers.push(marker);
 
-                // Sağ taraftaki firma listesine ekle
                 if (mapListContainer) {
                     const item = document.createElement('div');
                     item.className = 'p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-brand-50 cursor-pointer text-xs transition space-y-1 shadow-sm';
-                    
-                    if (marker) {
-                        item.onclick = () => {
-                            leafletMap.setView(marker.getLatLng(), 5);
-                            marker.openPopup();
-                        };
-                    }
+                    item.onclick = () => {
+                        leafletMap.setView(marker.getLatLng(), 5);
+                        marker.openPopup();
+                    };
 
                     item.innerHTML = `
                         <div class="flex items-center justify-between">
                             <b class="text-slate-900 truncate">${c.name}</b>
-                            <span class="text-[10px] ${isResponded ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-50 text-indigo-700 border-indigo-100'} font-bold px-1.5 py-0.5 rounded border">${compOps.length} Op</span>
+                            <span class="text-[10px] ${isResponded ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'} font-bold px-1.5 py-0.5 rounded border">${statusEmoji} ${shortCode}</span>
                         </div>
                         <div class="text-[11px] text-slate-500 flex items-center justify-between">
                             <span>${c.location || 'Konum Yok'}</span>
                             <span class="font-semibold text-brand-700">${formatAssignee(c.assignee)}</span>
                         </div>
-                        ${!coords ? '<div class="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-semibold">⚠ Konum Tespiti Edilmedi</div>' : ''}
-                        ${lastOp ? `
-                            <div class="text-[10px] text-slate-600 bg-white p-1.5 rounded border border-slate-200 mt-1 space-y-0.5">
-                                <div class="font-semibold text-slate-800"><b>Son Op:</b> ${lastOp.date} (${lastOp.type})</div>
-                                <div class="${isResponded ? 'text-emerald-700' : 'text-amber-700'} font-bold">
-                                    ${isResponded ? '✔ Yanıt Alındı' : '⏳ Yanıt Bekleniyor'}
-                                </div>
+                        <div class="text-[10px] text-slate-600 bg-white p-1.5 rounded border border-slate-200 mt-1 space-y-0.5">
+                            <div class="font-semibold text-slate-800"><b>Son Op:</b> ${lastOp.date} (${lastOp.type})</div>
+                            <div class="${isResponded ? 'text-emerald-700' : 'text-amber-700'} font-bold">
+                                ${isResponded ? '✔ Yanıt Alındı' : '⏳ Yanıt Bekleniyor'}
                             </div>
-                        ` : '<div class="text-[10px] text-slate-400 italic">Henüz operasyon yok</div>'}
+                        </div>
                     `;
                     mapListContainer.appendChild(item);
                 }
