@@ -350,7 +350,10 @@
             <!-- TAB 5: DÜNYA PAZARLAMA HARİTASI -->
             <section id="tab-map" class="tab-content hidden space-y-4">
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+                <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
                 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
                 <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
@@ -734,6 +737,12 @@
             // Almanya
             'germany': [51.1657, 10.4515], 'almanya': [51.1657, 10.4515], 'frankfurt': [50.1109, 8.6821], 'munich': [48.1351, 11.5820], 'munih': [48.1351, 11.5820], 'berlin': [52.5200, 13.4050], 'hamburg': [53.5511, 9.9937], 'dusseldorf': [51.2277, 6.7735], 'stuttgart': [48.7758, 9.1829], 'cologne': [50.9375, 6.9603], 'koln': [50.9375, 6.9603],
             
+            // Slovenya, Lüksemburg & Avrupa
+            'slovenia': [46.1512, 14.9955], 'slovenya': [46.1512, 14.9955], 'ljubljana': [46.0569, 14.5058],
+            'luxembourg': [49.8153, 6.1296], 'luksemburg': [49.8153, 6.1296], 'luksemburg': [49.8153, 6.1296],
+            'slovakia': [48.6690, 19.6990], 'slovakya': [48.6690, 19.6990], 'hungary': [47.1625, 19.5033], 'macaristan': [47.1625, 19.5033],
+            'croatia': [45.1000, 15.2000], 'hirvatistan': [45.1000, 15.2000], 'serbia': [44.0165, 21.0059], 'sirbistan': [44.0165, 21.0059],
+
             // Suudi Arabistan & Orta Doğu
             'saudi arabia': [23.8859, 45.0792], 'suudi arabistan': [23.8859, 45.0792], 'riyadh': [24.7136, 46.6753], 'riyad': [24.7136, 46.6753], 'jeddah': [21.5433, 39.1728], 'cidde': [21.5433, 39.1728], 'dammam': [26.4207, 50.0888],
             'uae': [23.4241, 53.8478], 'bae': [23.4241, 53.8478], 'united arab emirates': [23.4241, 53.8478], 'dubai': [25.2048, 55.2708], 'abu dhabi': [24.4539, 54.3773], 'sharjah': [25.3463, 55.4209],
@@ -854,27 +863,42 @@
             return clean.length >= 3 ? clean.substring(0, 3) : (clean + '   ').substring(0, 3);
         }
 
+        let markerClusterGroup = null;
+
         function initWorldMap() {
             if (typeof leaflet === 'undefined' && typeof L === 'undefined') return;
 
             if (!leafletMap) {
-                leafletMap = L.map('worldMap').setView([25, 15], 2);
+                leafletMap = L.map('worldMap').setView([30, 10], 2);
                 
-                // Esri Light Gray Harita Katmanı (Temiz, Ücretsiz)
+                // Esri Light Gray Harita Katmanı (Sade, Ferah, API Key Gerektirmez)
                 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                     maxZoom: 16,
                     attribution: 'Tiles © Esri'
                 }).addTo(leafletMap);
             }
 
-            // Temizle
-            mapMarkers.forEach(m => leafletMap.removeLayer(m));
-            mapMarkers = [];
+            // Önceki Kümeleme Grubunu ve İşaretçileri Temizle
+            if (markerClusterGroup) {
+                leafletMap.removeLayer(markerClusterGroup);
+            }
+
+            // Yeni Akıllı Kümeleme Grubu Oluştur (MarkerCluster)
+            if (typeof L.markerClusterGroup === 'function') {
+                markerClusterGroup = L.markerClusterGroup({
+                    showCoverageOnHover: false,
+                    spiderfyOnMaxZoom: true,
+                    zoomToBoundsOnClick: true,
+                    maxClusterRadius: 40
+                });
+            } else {
+                markerClusterGroup = L.layerGroup();
+            }
 
             const mapListContainer = document.getElementById('mapCompanyList');
             if (mapListContainer) mapListContainer.innerHTML = '';
 
-            // SADECE EN AZ 1 PAZARLAMA OPERASYONU YAPILMIŞ FİRMALARI AL
+            // Sadece En Az 1 Pazarlama Operasyonu Yapılmış Firmaları Al
             const companiesWithOps = companies.filter(c => {
                 const compOps = operations.filter(o => o.companyId === c.id);
                 return compOps.length > 0;
@@ -887,12 +911,11 @@
                 return;
             }
 
-            // Firmaları Temel Koordinatlarına Göre Grupla (Üst Üste Binmeyi Önlemek İçin)
-            const coordGroups = {};
             companiesWithOps.forEach(c => {
                 const combinedLocText = normalizeLocText((c.location || '') + ' ' + (c.name || ''));
                 let coords = null;
 
+                // Konum Eşleştirme (Tam ve Doğru Ülke/Şehir Bulma)
                 for (let key in countryCoords) {
                     const normKey = normalizeLocText(key);
                     if (combinedLocText.includes(normKey)) {
@@ -900,42 +923,6 @@
                         break;
                     }
                 }
-
-                if (!coords) {
-                    coords = [38.9637, 35.2433]; // Türkiye varsayılan
-                }
-
-                const groupKey = coords[0].toFixed(3) + ',' + coords[1].toFixed(3);
-                if (!coordGroups[groupKey]) coordGroups[groupKey] = [];
-                coordGroups[groupKey].push({ company: c, baseCoords: coords });
-            });
-
-            // Aynı Bölgedeki Pinleri Dairesel/Spiral Şekilde Dağıt
-            const positionedItems = [];
-            for (let gKey in coordGroups) {
-                const group = coordGroups[gKey];
-                group.forEach((item, index) => {
-                    let lat = item.baseCoords[0];
-                    let lng = item.baseCoords[1];
-
-                    if (group.length > 1) {
-                        const angle = (index / group.length) * 2 * Math.PI;
-                        const radius = 1.2 + (index * 0.25); // Haritada üst üste binmeyecek şekilde yayılır
-                        lat += Math.sin(angle) * radius;
-                        lng += Math.cos(angle) * radius * 1.4;
-                    }
-
-                    item.lat = lat;
-                    item.lng = lng;
-                    positionedItems.push(item);
-                });
-            }
-
-            // Harita İşaretçilerini ve Sağ Paneli Oluştur
-            positionedItems.forEach(item => {
-                const c = item.company;
-                const lat = item.lat;
-                const lng = item.lng;
 
                 const compOps = operations.filter(o => o.companyId === c.id).sort((a,b) => new Date(b.date) - new Date(a.date));
                 const lastOp = compOps[0]; 
@@ -946,66 +933,83 @@
                 const markerBg = isResponded ? 'bg-emerald-600' : 'bg-amber-600';
                 const pulseBg = isResponded ? 'bg-emerald-400' : 'bg-amber-400';
 
-                // Rozette Operasyon Sayısı Yerine 3 Harfli Kod ve Durum Simgesi
-                const customMarkerHtml = `
-                    <div class="relative flex items-center justify-center group cursor-pointer">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full ${pulseBg} opacity-40"></span>
-                        <div class="relative inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${markerBg} text-white font-bold shadow-md border-2 border-white text-[11px] whitespace-nowrap transition group-hover:scale-110">
-                            <span>${statusEmoji}</span>
-                            <span>${shortCode}</span>
+                let marker = null;
+
+                // Yalnızca Gerçek Konumu Bulunan Firmaları Haritaya Koy
+                if (coords) {
+                    const lat = coords[0] + (Math.random() - 0.5) * 0.5;
+                    const lng = coords[1] + (Math.random() - 0.5) * 0.5;
+
+                    const customMarkerHtml = `
+                        <div class="relative flex items-center justify-center group cursor-pointer">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full ${pulseBg} opacity-40"></span>
+                            <div class="relative inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${markerBg} text-white font-bold shadow-md border-2 border-white text-[11px] whitespace-nowrap transition group-hover:scale-110">
+                                <span>${statusEmoji}</span>
+                                <span>${shortCode}</span>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
 
-                const customIcon = L.divIcon({
-                    html: customMarkerHtml,
-                    className: 'custom-corporate-pin',
-                    iconSize: [52, 24],
-                    iconAnchor: [26, 12],
-                    popupAnchor: [0, -12]
-                });
+                    const customIcon = L.divIcon({
+                        html: customMarkerHtml,
+                        className: 'custom-corporate-pin',
+                        iconSize: [52, 24],
+                        iconAnchor: [26, 12],
+                        popupAnchor: [0, -12]
+                    });
 
-                const marker = L.marker([lat, lng], { icon: customIcon }).addTo(leafletMap);
+                    marker = L.marker([lat, lng], { icon: customIcon });
 
-                const responseBadge = isResponded 
-                    ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">✔ Yanıt Alındı</span>'
-                    : '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">⏳ Bekliyor</span>';
+                    const responseBadge = isResponded 
+                        ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">✔ Yanıt Alındı</span>'
+                        : '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">⏳ Bekliyor</span>';
 
-                const lastOpDetails = `
-                    <div class="mt-2 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
-                        <div class="flex items-center justify-between gap-1">
-                            <b class="text-slate-800">${lastOp.date} - ${lastOp.type}</b>
-                            ${responseBadge}
+                    const lastOpDetails = `
+                        <div class="mt-2 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
+                            <div class="flex items-center justify-between gap-1">
+                                <b class="text-slate-800">${lastOp.date} - ${lastOp.type}</b>
+                                ${responseBadge}
+                            </div>
+                            <div class="text-slate-600 truncate" title="${lastOp.targetContact || ''}"><b>Kanal:</b> ${lastOp.targetContact || '-'}</div>
+                            ${lastOp.notes ? `<div class="text-slate-500 italic bg-slate-50 p-1.5 rounded border border-slate-200 whitespace-pre-line line-clamp-2">${lastOp.notes}</div>` : ''}
                         </div>
-                        <div class="text-slate-600 truncate" title="${lastOp.targetContact || ''}"><b>Kanal:</b> ${lastOp.targetContact || '-'}</div>
-                        ${lastOp.notes ? `<div class="text-slate-500 italic bg-slate-50 p-1.5 rounded border border-slate-200 whitespace-pre-line line-clamp-2">${lastOp.notes}</div>` : ''}
-                    </div>
-                `;
+                    `;
 
-                marker.bindPopup(`
-                    <div class="p-1 text-xs min-w-[240px]">
-                        <div class="flex items-center justify-between gap-1">
-                            <b class="text-sm text-slate-900">${c.name}</b>
-                            <span class="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 rounded font-semibold text-[10px]">${compOps.length} Op</span>
+                    marker.bindPopup(`
+                        <div class="p-1 text-xs min-w-[240px]">
+                            <div class="flex items-center justify-between gap-1">
+                                <b class="text-sm text-slate-900">${c.name}</b>
+                                <span class="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 rounded font-semibold text-[10px]">${compOps.length} Op</span>
+                            </div>
+                            <span class="text-slate-500 block">${c.location || 'Konum Yok'} | ${c.sector || 'Sektörsüz'}</span>
+                            <span class="text-brand-700 font-bold block mt-1">Sorumlu: ${formatAssignee(c.assignee)}</span>
+                            ${lastOpDetails}
+                            <div class="mt-2 pt-1 border-t border-slate-100 text-right">
+                                <button onclick="openCompanyDetail('${c.id}')" class="text-brand-600 hover:underline font-bold text-[11px]">Firma Detayına Git →</button>
+                            </div>
                         </div>
-                        <span class="text-slate-500 block">${c.location || 'Konum Yok'} | ${c.sector || 'Sektörsüz'}</span>
-                        <span class="text-brand-700 font-bold block mt-1">Sorumlu: ${formatAssignee(c.assignee)}</span>
-                        ${lastOpDetails}
-                        <div class="mt-2 pt-1 border-t border-slate-100 text-right">
-                            <button onclick="openCompanyDetail('${c.id}')" class="text-brand-600 hover:underline font-bold text-[11px]">Firma Detayına Git →</button>
-                        </div>
-                    </div>
-                `);
+                    `);
 
-                mapMarkers.push(marker);
+                    markerClusterGroup.addLayer(marker);
+                }
 
+                // Sağ Paneldeki Müşteri Listesini Oluştur
                 if (mapListContainer) {
                     const item = document.createElement('div');
                     item.className = 'p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-brand-50 cursor-pointer text-xs transition space-y-1 shadow-sm';
-                    item.onclick = () => {
-                        leafletMap.setView(marker.getLatLng(), 5);
-                        marker.openPopup();
-                    };
+                    
+                    if (marker) {
+                        item.onclick = () => {
+                            if (markerClusterGroup.zoomToShowLayer) {
+                                markerClusterGroup.zoomToShowLayer(marker, () => {
+                                    marker.openPopup();
+                                });
+                            } else {
+                                leafletMap.setView(marker.getLatLng(), 6);
+                                marker.openPopup();
+                            }
+                        };
+                    }
 
                     item.innerHTML = `
                         <div class="flex items-center justify-between">
@@ -1016,6 +1020,7 @@
                             <span>${c.location || 'Konum Yok'}</span>
                             <span class="font-semibold text-brand-700">${formatAssignee(c.assignee)}</span>
                         </div>
+                        ${!coords ? '<div class="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-semibold">⚠ Konum Tanımlanmadı (Lütfen Ülke Girin)</div>' : ''}
                         <div class="text-[10px] text-slate-600 bg-white p-1.5 rounded border border-slate-200 mt-1 space-y-0.5">
                             <div class="font-semibold text-slate-800"><b>Son Op:</b> ${lastOp.date} (${lastOp.type})</div>
                             <div class="${isResponded ? 'text-emerald-700' : 'text-amber-700'} font-bold">
@@ -1026,6 +1031,8 @@
                     mapListContainer.appendChild(item);
                 }
             });
+
+            leafletMap.addLayer(markerClusterGroup);
 
             setTimeout(() => { 
                 leafletMap.invalidateSize(); 
