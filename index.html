@@ -15,15 +15,16 @@
         #tab-operations { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
         header, aside, sidebar, button, input, select, .no-print, nav, .action-col { display: none !important; }
         .tab-content { display: block !important; }
-        table { width: 100% !important; border-collapse: collapse !important; margin-top: 15px !important; }
-        th, td { border: 1px solid #94a3b8 !important; padding: 8px 10px !important; font-size: 11px !important; color: #000 !important; }
+        table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px !important; }
+        tr { page-break-inside: avoid !important; }
+        th, td { border: 1px solid #94a3b8 !important; padding: 6px 8px !important; font-size: 10px !important; color: #000 !important; }
         th { 
             background-color: #f1f5f9 !important; 
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact; 
         }
         th:last-child, td:last-child { display: none !important; }
-        .print-card { border: 1px solid #cbd5e1 !important; page-break-inside: avoid !important; }
+        .print-card { border: 1px solid #cbd5e1 !important; }
         .max-h-28 { max-height: none !important; overflow: visible !important; }
     }
 </style>
@@ -340,12 +341,12 @@
                         </div>
                     </div>
 
-                    <!-- Dashboard 2: Hangi Ülkeye Kaç Operasyon Yapıldı -->
+                    <!-- Dashboard 2: Hangi Ülkeye Kaç Operasyon Yapıldı (İlk 5 Ülke) -->
                     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm print-card flex flex-col">
                         <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-1.5">
                             <span class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                                 <i data-lucide="globe" class="w-4 h-4 text-blue-600"></i>
-                                Ülke Dağılımı
+                                Ülke Dağılımı (İlk 5)
                             </span>
                             <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400"></i>
                         </div>
@@ -1318,11 +1319,11 @@
             document.getElementById('op-kpi-rate').textContent = `%${responseRate}`;
             document.getElementById('op-kpi-pending').textContent = pendingOps.length;
 
-            // 1. Ülke Dağılımı (Hangi Ülkeye Kaç Operasyon Yapıldı)
+            // 1. Ülke Dağılımı (İlk 5 Ülke + Diğer Toplamı)
             const countryCounts = {};
             operations.forEach(o => {
                 const comp = companies.find(c => c.id === o.companyId);
-                let country = comp && comp.location ? comp.location.trim() : 'Diğer / Belirtilmedi';
+                let country = comp && comp.location ? comp.location.trim() : 'Belirtilmedi';
                 countryCounts[country] = (countryCounts[country] || 0) + 1;
             });
 
@@ -1333,15 +1334,29 @@
                 if (sortedCountries.length === 0) {
                     countryContainer.innerHTML = '<div class="text-slate-400 text-[11px] italic">Kayıt yok.</div>';
                 } else {
-                    sortedCountries.forEach(([country, count]) => {
+                    const top5Countries = sortedCountries.slice(0, 5);
+                    const remainingCountries = sortedCountries.slice(5);
+                    const remainingTotal = remainingCountries.reduce((acc, curr) => acc + curr[1], 0);
+
+                    top5Countries.forEach(([country, count]) => {
                         const div = document.createElement('div');
-                        div.className = 'flex items-center justify-between py-1 border-b border-slate-100 last:border-0 text-xs';
+                        div.className = 'flex items-center justify-between py-0.5 border-b border-slate-100 last:border-0 text-xs';
                         div.innerHTML = `
-                            <span class="font-medium text-slate-700 truncate max-w-[130px]" title="${country}">${country}</span>
-                            <span class="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-full text-[10px] border border-blue-100">${count} Op</span>
+                            <span class="font-medium text-slate-700 truncate max-w-[120px]" title="${country}">${country}</span>
+                            <span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 font-bold rounded text-[10px] border border-blue-100">${count} Op</span>
                         `;
                         countryContainer.appendChild(div);
                     });
+
+                    if (remainingTotal > 0) {
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center justify-between py-0.5 text-xs text-slate-500 font-semibold';
+                        div.innerHTML = `
+                            <span>Diğer (${remainingCountries.length} Ülke)</span>
+                            <span class="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px]">${remainingTotal} Op</span>
+                        `;
+                        countryContainer.appendChild(div);
+                    }
                 }
             }
 
