@@ -13,7 +13,7 @@
         body * { visibility: hidden !important; }
         #tab-operations, #tab-operations * { visibility: visible !important; }
         #tab-operations { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
-        header, aside, sidebar, button, input, select, .no-print, nav { display: none !important; }
+        header, aside, sidebar, button, input, select, .no-print, nav, .action-col { display: none !important; }
         .tab-content { display: block !important; }
         table { width: 100% !important; border-collapse: collapse !important; margin-top: 15px !important; }
         th, td { border: 1px solid #94a3b8 !important; padding: 8px 10px !important; font-size: 11px !important; color: #000 !important; }
@@ -22,6 +22,9 @@
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact; 
         }
+        th:last-child, td:last-child { display: none !important; }
+        .print-card { border: 1px solid #cbd5e1 !important; page-break-inside: avoid !important; }
+        .max-h-28 { max-height: none !important; overflow: visible !important; }
     }
 </style>
 
@@ -285,6 +288,7 @@
 
             <!-- TAB 3: OPERATIONS & HISTORY -->
             <section id="tab-operations" class="tab-content hidden space-y-4">
+                <!-- Üst Kontrol ve Başlık Barı -->
                 <div class="flex flex-col md:flex-row items-center justify-between bg-white p-4 rounded-xl border border-slate-200 gap-3">
                     <div>
                         <h3 class="font-bold text-slate-800 text-sm">Pazarlama Operasyon Geçmişi</h3>
@@ -309,7 +313,78 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <!-- PAZARLAMA OPERASYON DOKÜMAN / DASHBOARD ÖZETİ (Ekranda ve Yazdırma Sayfasında Görünür) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Dashboard 1: Genel Operasyon & Dönüş Özeti -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm print-card flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-1.5">
+                            <span class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="activity" class="w-4 h-4 text-indigo-600"></i>
+                                Operasyon Özeti
+                            </span>
+                            <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded">Genel</span>
+                        </div>
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-500">Toplam Temas / Op:</span>
+                                <b class="text-slate-900 text-sm" id="op-kpi-total">0</b>
+                            </div>
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-500">Yanıt Alınan:</span>
+                                <b class="text-emerald-600"><span id="op-kpi-responded">0</span> (<span id="op-kpi-rate">%0</span>)</b>
+                            </div>
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-500">Yanıt Bekleyen:</span>
+                                <b class="text-amber-600" id="op-kpi-pending">0</b>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard 2: Hangi Ülkeye Kaç Operasyon Yapıldı -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm print-card flex flex-col">
+                        <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-1.5">
+                            <span class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="globe" class="w-4 h-4 text-blue-600"></i>
+                                Ülke Dağılımı
+                            </span>
+                            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400"></i>
+                        </div>
+                        <div id="op-dash-countries" class="space-y-1 overflow-y-auto max-h-28 custom-scrollbar flex-1 pr-1">
+                            <!-- Dynamic Country List -->
+                        </div>
+                    </div>
+
+                    <!-- Dashboard 3: Pazarlama Türü Dağılımı -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm print-card flex flex-col">
+                        <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-1.5">
+                            <span class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="send" class="w-4 h-4 text-brand-600"></i>
+                                Pazarlama Türü
+                            </span>
+                            <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-400"></i>
+                        </div>
+                        <div id="op-dash-types" class="space-y-1 overflow-y-auto max-h-28 custom-scrollbar flex-1 pr-1">
+                            <!-- Dynamic Type List -->
+                        </div>
+                    </div>
+
+                    <!-- Dashboard 4: Sorumlu Temsilci Performansı -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm print-card flex flex-col">
+                        <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-1.5">
+                            <span class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="users" class="w-4 h-4 text-emerald-600"></i>
+                                Sorumlu Temsilciler
+                            </span>
+                            <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-400"></i>
+                        </div>
+                        <div id="op-dash-assignees" class="space-y-1 overflow-y-auto max-h-28 custom-scrollbar flex-1 pr-1">
+                            <!-- Dynamic Assignee List -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OPERASYON LİSTESİ TABLOSU -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden print-card">
                     <div class="overflow-x-auto">
                         <table class="w-full text-xs text-left">
                             <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
@@ -321,7 +396,7 @@
                                     <th class="px-4 py-3">Ulaşılan Yetkili / Kanal</th>
                                     <th class="px-4 py-3">Geri Dönüş Var mı?</th>
                                     <th class="px-4 py-3">Yanıt / Not Açıklaması</th>
-                                    <th class="px-4 py-3 text-right">İşlem</th>
+                                    <th class="px-4 py-3 text-right action-col">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody id="operations-table-body" class="divide-y divide-slate-100">
@@ -1045,6 +1120,7 @@
             renderSectorDropdowns();
             renderDashboardKPIs();
             renderCompanies();
+            renderOperationsDashboard();
             renderOperationsTable();
             renderDatabankNotes();
             renderNoResponseAlerts();
@@ -1225,6 +1301,106 @@
                 case 'Müşteri': return 'bg-emerald-100 text-emerald-800';
                 case 'Olumsuz / Pasif': return 'bg-slate-100 text-slate-600';
                 default: return 'bg-slate-100 text-slate-800';
+            }
+        }
+
+        function renderOperationsDashboard() {
+            const kpiTotal = document.getElementById('op-kpi-total');
+            if (!kpiTotal) return;
+
+            const totalOps = operations.length;
+            const respondedOps = operations.filter(o => o.hasResponse === 'Evet');
+            const pendingOps = operations.filter(o => o.hasResponse === 'Hayır');
+            const responseRate = totalOps > 0 ? Math.round((respondedOps.length / totalOps) * 100) : 0;
+
+            document.getElementById('op-kpi-total').textContent = totalOps;
+            document.getElementById('op-kpi-responded').textContent = respondedOps.length;
+            document.getElementById('op-kpi-rate').textContent = `%${responseRate}`;
+            document.getElementById('op-kpi-pending').textContent = pendingOps.length;
+
+            // 1. Ülke Dağılımı (Hangi Ülkeye Kaç Operasyon Yapıldı)
+            const countryCounts = {};
+            operations.forEach(o => {
+                const comp = companies.find(c => c.id === o.companyId);
+                let country = comp && comp.location ? comp.location.trim() : 'Diğer / Belirtilmedi';
+                countryCounts[country] = (countryCounts[country] || 0) + 1;
+            });
+
+            const countryContainer = document.getElementById('op-dash-countries');
+            if (countryContainer) {
+                countryContainer.innerHTML = '';
+                const sortedCountries = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]);
+                if (sortedCountries.length === 0) {
+                    countryContainer.innerHTML = '<div class="text-slate-400 text-[11px] italic">Kayıt yok.</div>';
+                } else {
+                    sortedCountries.forEach(([country, count]) => {
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center justify-between py-1 border-b border-slate-100 last:border-0 text-xs';
+                        div.innerHTML = `
+                            <span class="font-medium text-slate-700 truncate max-w-[130px]" title="${country}">${country}</span>
+                            <span class="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-full text-[10px] border border-blue-100">${count} Op</span>
+                        `;
+                        countryContainer.appendChild(div);
+                    });
+                }
+            }
+
+            // 2. Pazarlama Türü Dağılımı
+            const typeCounts = {};
+            operations.forEach(o => {
+                const t = o.type || 'Diğer';
+                typeCounts[t] = (typeCounts[t] || 0) + 1;
+            });
+
+            const typeContainer = document.getElementById('op-dash-types');
+            if (typeContainer) {
+                typeContainer.innerHTML = '';
+                const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+                if (sortedTypes.length === 0) {
+                    typeContainer.innerHTML = '<div class="text-slate-400 text-[11px] italic">Kayıt yok.</div>';
+                } else {
+                    sortedTypes.forEach(([type, count]) => {
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center justify-between py-1 border-b border-slate-100 last:border-0 text-xs';
+                        div.innerHTML = `
+                            <span class="font-medium text-slate-700 truncate max-w-[130px]" title="${type}">${type}</span>
+                            <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded-full text-[10px] border border-indigo-100">${count} Op</span>
+                        `;
+                        typeContainer.appendChild(div);
+                    });
+                }
+            }
+
+            // 3. Sorumlu Temsilci Performansı
+            const assigneeCounts = {};
+            operations.forEach(o => {
+                const a = formatAssignee(o.assignee);
+                if (!assigneeCounts[a]) assigneeCounts[a] = { total: 0, responded: 0 };
+                assigneeCounts[a].total += 1;
+                if (o.hasResponse === 'Evet') assigneeCounts[a].responded += 1;
+            });
+
+            const assigneeContainer = document.getElementById('op-dash-assignees');
+            if (assigneeContainer) {
+                assigneeContainer.innerHTML = '';
+                const sortedAssignees = Object.entries(assigneeCounts).sort((a, b) => b[1].total - a[1].total);
+                if (sortedAssignees.length === 0) {
+                    assigneeContainer.innerHTML = '<div class="text-slate-400 text-[11px] italic">Kayıt yok.</div>';
+                } else {
+                    sortedAssignees.forEach(([assignee, stats]) => {
+                        const rate = stats.total > 0 ? Math.round((stats.responded / stats.total) * 100) : 0;
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center justify-between py-1 border-b border-slate-100 last:border-0 text-xs';
+                        div.innerHTML = `
+                            <span class="font-bold text-slate-800">${assignee}</span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-700 font-bold rounded text-[10px]">${stats.total} Op</span>
+                                <span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded text-[10px]">%${rate} Dönüş</span>
+                            </div>
+                        `;
+                        assigneeContainer.appendChild(div);
+                    });
+                }
             }
         }
 
