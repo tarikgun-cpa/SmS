@@ -173,13 +173,17 @@
                     </div>
 
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Yanıt Alınan</p>
+                        <div class="w-full">
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Yanıt Alınan</p>
+                                <span class="text-xs text-emerald-600 font-bold" id="kpi-response-rate">%0 Dönüş</span>
+                            </div>
                             <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="kpi-responses">0</h3>
-                            <p class="text-xs text-emerald-600 font-medium mt-1" id="kpi-response-rate">%0 Dönüş Oranı</p>
-                        </div>
-                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
-                            <i data-lucide="message-square-check" class="w-6 h-6"></i>
+                            <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100 text-[11px]">
+                                <span class="text-emerald-700 font-semibold" title="Olumlu / Teklif">👍 <span id="kpi-pos-count">0</span> Olumlu</span>
+                                <span class="text-rose-600 font-semibold" title="Olumsuz">👎 <span id="kpi-neg-count">0</span> Olumsuz</span>
+                                <span class="text-indigo-600 font-semibold" title="Numune İsteyen">📦 <span id="kpi-sample-count">0</span> Numune</span>
+                            </div>
                         </div>
                     </div>
 
@@ -219,21 +223,21 @@
                         </div>
                     </div>
 
-                    <!-- Right: Urgent Follow-ups / No Response Alert Panel -->
+                    <!-- Right: Response Status Panel (Bekleyenler & Geri Dönüş Olanlar) -->
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-1.5 text-rose-700">
-                                    <i data-lucide="alert-circle" class="w-4 h-4"></i>
-                                    Geri Dönüş Olmayanlar & Uyarılı
-                                </h3>
-                                <p class="text-xs text-slate-400">Temas kurulup yanıt beklenilen tüm kayıtlar</p>
+                        <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs font-semibold w-full">
+                                <button onclick="toggleAlertTab('pending')" id="tab-btn-pending" class="flex-1 py-1 rounded-md bg-white text-rose-700 shadow-sm transition text-center">
+                                    ⏳ Bekleyenler (<span id="no-resp-badge">0</span>)
+                                </button>
+                                <button onclick="toggleAlertTab('responded')" id="tab-btn-responded" class="flex-1 py-1 rounded-md text-slate-600 hover:text-slate-900 transition text-center">
+                                    ✅ Yanıt Alınanlar (<span id="resp-badge">0</span>)
+                                </button>
                             </div>
-                            <span class="px-2.5 py-1 text-xs bg-rose-100 text-rose-800 rounded-full font-bold" id="no-resp-badge">0</span>
                         </div>
 
                         <div class="mb-3">
-                            <input type="text" id="alertSearch" oninput="renderNoResponseAlerts()" placeholder="Uyarılarda firma veya not ara..." class="w-full text-xs p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-rose-400 focus:outline-none bg-slate-50">
+                            <input type="text" id="alertSearch" oninput="renderNoResponseAlerts()" placeholder="Firma, yanıt veya not ara..." class="w-full text-xs p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400 focus:outline-none bg-slate-50">
                         </div>
 
                         <div id="no-response-list" class="space-y-2.5 overflow-y-auto max-h-[480px] custom-scrollbar flex-1 pr-1">
@@ -334,7 +338,21 @@
                                 <span class="text-slate-500">Yanıt Alınan:</span>
                                 <b class="text-emerald-600"><span id="op-kpi-responded">0</span> (<span id="op-kpi-rate">%0</span>)</b>
                             </div>
-                            <div class="flex items-center justify-between text-xs">
+                            <div class="grid grid-cols-3 gap-1 bg-slate-50 p-1.5 rounded text-[10px] border border-slate-100 text-center">
+                                <div class="bg-emerald-50 p-1 rounded text-emerald-700 font-bold">
+                                    <div>👍 Olumlu</div>
+                                    <span id="op-kpi-pos">0</span>
+                                </div>
+                                <div class="bg-rose-50 p-1 rounded text-rose-700 font-bold">
+                                    <div>👎 Olumsuz</div>
+                                    <span id="op-kpi-neg">0</span>
+                                </div>
+                                <div class="bg-blue-50 p-1 rounded text-blue-700 font-bold">
+                                    <div>📦 Numune</div>
+                                    <span id="op-kpi-sample">0</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between text-xs pt-0.5">
                                 <span class="text-slate-500">Yanıt Bekleyen:</span>
                                 <b class="text-amber-600" id="op-kpi-pending">0</b>
                             </div>
@@ -860,6 +878,15 @@
             return name;
         }
 
+        function classifyResponseType(responseTypeStr) {
+    if (!responseTypeStr) return 'other';
+    const str = responseTypeStr.toLowerCase();
+    if (str.includes('numune')) return 'sample';
+    if (str.includes('olumlu') || str.includes('fiyat') || str.includes('teklif') || str.includes('kabul')) return 'positive';
+    if (str.includes('olumsuz') || str.includes('ihtiyaç yok') || str.includes('ret') || str.includes('ulaşılamadı')) return 'negative';
+    return 'other';
+}
+
         // INITIALIZATION VE GİRİŞ KONTROLÜ
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
@@ -1003,11 +1030,29 @@
                 const compOps = operations.filter(o => o.companyId === c.id).sort((a,b) => new Date(b.date) - new Date(a.date));
                 const lastOp = compOps[0]; 
                 const isResponded = lastOp && lastOp.hasResponse === 'Evet';
+                const respCls = isResponded ? classifyResponseType(lastOp.responseType) : 'pending';
 
                 const shortCode = getCompanyShortCode(c.name);
-                const statusEmoji = isResponded ? '✅' : '⏳';
-                const markerBg = isResponded ? 'bg-emerald-600' : 'bg-amber-600';
-                const pulseBg = isResponded ? 'bg-emerald-400' : 'bg-amber-400';
+                
+                let statusEmoji = '⏳';
+                let markerBg = 'bg-amber-600';
+                let pulseBg = 'bg-amber-400';
+
+                if (isResponded) {
+                    if (respCls === 'positive' || respCls === 'sample') {
+                        statusEmoji = '✅';
+                        markerBg = 'bg-emerald-600';
+                        pulseBg = 'bg-emerald-400';
+                    } else if (respCls === 'negative') {
+                        statusEmoji = '❌';
+                        markerBg = 'bg-rose-600';
+                        pulseBg = 'bg-rose-400';
+                    } else {
+                        statusEmoji = '💬';
+                        markerBg = 'bg-blue-600';
+                        pulseBg = 'bg-blue-400';
+                    }
+                }
 
                 let marker = null;
 
@@ -1036,9 +1081,16 @@
 
                     marker = L.marker([lat, lng], { icon: customIcon });
 
-                    const responseBadge = isResponded 
-                        ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">✔ Yanıt Alındı</span>'
-                        : '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">⏳ Bekliyor</span>';
+                    let responseBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">⏳ Bekliyor</span>';
+                    if (isResponded) {
+                        if (respCls === 'positive' || respCls === 'sample') {
+                            responseBadge = '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">✅ Olumlu Yanıt</span>';
+                        } else if (respCls === 'negative') {
+                            responseBadge = '<span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[10px]">❌ Olumsuz Yanıt</span>';
+                        } else {
+                            responseBadge = '<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold text-[10px]">💬 Yanıt Alındı</span>';
+                        }
+                    }
 
                     const lastOpDetails = `
                         <div class="mt-2 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
@@ -1139,9 +1191,20 @@
             document.getElementById('kpi-responses').textContent = respondedOps.length;
 
             const rate = operations.length > 0 ? Math.round((respondedOps.length / operations.length) * 100) : 0;
-            document.getElementById('kpi-response-rate').textContent = `%${rate} Dönüş Oranı`;
+            document.getElementById('kpi-response-rate').textContent = `%${rate} Dönüş`;
 
-            // Pending Alert Count
+            let posCount = 0, negCount = 0, sampleCount = 0;
+            respondedOps.forEach(o => {
+                const cls = classifyResponseType(o.responseType);
+                if (cls === 'sample') sampleCount++;
+                else if (cls === 'positive') posCount++;
+                else if (cls === 'negative') negCount++;
+            });
+
+            if (document.getElementById('kpi-pos-count')) document.getElementById('kpi-pos-count').textContent = posCount;
+            if (document.getElementById('kpi-neg-count')) document.getElementById('kpi-neg-count').textContent = negCount;
+            if (document.getElementById('kpi-sample-count')) document.getElementById('kpi-sample-count').textContent = sampleCount;
+
             const noResponseOps = operations.filter(o => o.hasResponse === 'Hayır');
             document.getElementById('kpi-pending-alerts').textContent = noResponseOps.length;
             
@@ -1243,6 +1306,7 @@
             filtered.forEach(c => {
                 const compOps = operations.filter(o => o.companyId === c.id);
                 const hasPending = compOps.some(o => o.hasResponse === 'Hayır');
+                const respondedOpsCount = compOps.filter(o => o.hasResponse === 'Evet').length;
 
                 const card = document.createElement('div');
                 card.className = `bg-white rounded-xl border p-5 shadow-sm hover:shadow-lg hover:border-brand-300 cursor-pointer transition flex flex-col justify-between ${hasPending ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'}`;
@@ -1277,8 +1341,9 @@
     </div>               
 
                     <div class="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span class="text-slate-600 font-semibold text-[11px] flex items-center gap-1 bg-slate-100 px-2 py-1 rounded">
-                            <i data-lucide="send" class="w-3 h-3 text-brand-600"></i> ${compOps.length} Operasyon
+                        <span class="text-slate-700 font-semibold text-[11px] flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                            <i data-lucide="send" class="w-3 h-3 text-brand-600"></i> ${compOps.length} Op
+                            ${respondedOpsCount > 0 ? `<span class="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5"><i data-lucide="check-circle-2" class="w-3 h-3 text-emerald-600"></i> ${respondedOpsCount} Cevap</span>` : ''}
                         </span>
 
                         <div class="flex items-center gap-1">
@@ -1318,6 +1383,18 @@
             document.getElementById('op-kpi-responded').textContent = respondedOps.length;
             document.getElementById('op-kpi-rate').textContent = `%${responseRate}`;
             document.getElementById('op-kpi-pending').textContent = pendingOps.length;
+
+            let posCount = 0, negCount = 0, sampleCount = 0;
+            respondedOps.forEach(o => {
+                const cls = classifyResponseType(o.responseType);
+                if (cls === 'sample') sampleCount++;
+                else if (cls === 'positive') posCount++;
+                else if (cls === 'negative') negCount++;
+            });
+
+            if (document.getElementById('op-kpi-pos')) document.getElementById('op-kpi-pos').textContent = posCount;
+            if (document.getElementById('op-kpi-neg')) document.getElementById('op-kpi-neg').textContent = negCount;
+            if (document.getElementById('op-kpi-sample')) document.getElementById('op-kpi-sample').textContent = sampleCount;
 
             // 1. Ülke Dağılımı (İlk 5 Ülke + Diğer Toplamı)
             const countryCounts = {};
@@ -1450,24 +1527,39 @@
             filteredOps.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(op => {
                 const comp = companies.find(c => c.id === op.companyId) || { name: 'Silinmiş Firma' };
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50 transition';
+                const respCls = op.hasResponse === 'Evet' ? classifyResponseType(op.responseType) : 'pending';
+
+                let rowBgClass = 'hover:bg-slate-50';
+                let noteTextClass = 'text-slate-600';
+
+                if (op.hasResponse === 'Evet') {
+                    if (respCls === 'positive' || respCls === 'sample') {
+                        rowBgClass = 'bg-emerald-50/50 hover:bg-emerald-100/70';
+                        noteTextClass = 'text-emerald-800 font-semibold';
+                    } else if (respCls === 'negative') {
+                        rowBgClass = 'bg-rose-50/50 hover:bg-rose-100/70';
+                        noteTextClass = 'text-rose-800 font-semibold';
+                    }
+                }
+
+                tr.className = `${rowBgClass} transition`;
                 
                 tr.innerHTML = `
                     <td class="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">${op.date}</td>
                     <td class="px-4 py-3 font-bold text-slate-900">${comp.name}</td>
                     <td class="px-4 py-3"><span class="bg-indigo-50 text-indigo-800 font-bold px-2 py-0.5 rounded text-[11px] border border-indigo-100">${formatAssignee(op.assignee)}</span></td>
-                    <td class="px-4 py-3"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">${op.type}</span></td>
+                    <td class="px-4 py-3"><span class="bg-white/80 border border-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium">${op.type}</span></td>
                     <td class="px-4 py-3 text-slate-600">${op.targetContact || '-'}</td>
                     <td class="px-4 py-3">
                         ${op.hasResponse === 'Evet' 
                             ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-semibold flex items-center w-max gap-1"><i data-lucide="check" class="w-3 h-3"></i> Yanıt Alındı</span>`
-                            : `<span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-semibold flex items-center w-max gap-1"><i data-lucide="clock" class="w-3 h-3"></i> Bekliyor</span>`
+                            : `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-semibold flex items-center w-max gap-1"><i data-lucide="clock" class="w-3 h-3"></i> Bekliyor</span>`
                         }
                     </td>
-                    <td class="px-4 py-3 text-slate-600 max-w-xs truncate" title="${op.notes || ''}">
-                        <span class="font-semibold text-slate-800">${op.responseType || ''}</span> ${op.notes ? `- ${op.notes}` : ''}
+                    <td class="px-4 py-3 ${noteTextClass} max-w-xs truncate" title="${op.notes || ''}">
+                        <span class="font-bold underline decoration-slate-300">${op.responseType || ''}</span> ${op.notes ? `- ${op.notes}` : ''}
                     </td>
-                    <td class="px-4 py-3 text-right">
+                    <td class="px-4 py-3 text-right action-col">
                         <button onclick="editOperation('${op.id}')" class="text-indigo-600 hover:text-indigo-800 p-1 mr-1" title="Düzenle/Güncelle"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
                         <button onclick="deleteOperation('${op.id}')" class="text-slate-400 hover:text-rose-600 p-1" title="Sil"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </td>
@@ -1797,48 +1889,92 @@
         // SAVE & EDIT OPERATION
         
 
+        let activeAlertTab = 'pending';
+
+        function toggleAlertTab(tab) {
+            activeAlertTab = tab;
+            const btnPending = document.getElementById('tab-btn-pending');
+            const btnResponded = document.getElementById('tab-btn-responded');
+
+            if (tab === 'pending') {
+                btnPending.className = "flex-1 py-1 rounded-md bg-white text-rose-700 shadow-sm transition text-center";
+                btnResponded.className = "flex-1 py-1 rounded-md text-slate-600 hover:text-slate-900 transition text-center";
+            } else {
+                btnResponded.className = "flex-1 py-1 rounded-md bg-white text-emerald-700 shadow-sm transition text-center";
+                btnPending.className = "flex-1 py-1 rounded-md text-slate-600 hover:text-slate-900 transition text-center";
+            }
+            renderNoResponseAlerts();
+        }
+
         function renderNoResponseAlerts() {
             const container = document.getElementById('no-response-list');
-            const badge = document.getElementById('no-resp-badge');
+            const badgePending = document.getElementById('no-resp-badge');
+            const badgeResponded = document.getElementById('resp-badge');
             if (!container) return;
             container.innerHTML = '';
 
             const searchInput = document.getElementById('alertSearch');
             const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-            let pendingOps = operations.filter(o => o.hasResponse === 'Hayır');
-            
+            const pendingOpsAll = operations.filter(o => o.hasResponse === 'Hayır');
+            const respondedOpsAll = operations.filter(o => o.hasResponse === 'Evet');
+
+            if (badgePending) badgePending.textContent = pendingOpsAll.length;
+            if (badgeResponded) badgeResponded.textContent = respondedOpsAll.length;
+
+            let targetOps = activeAlertTab === 'pending' ? pendingOpsAll : respondedOpsAll;
+
             if (query) {
-                pendingOps = pendingOps.filter(op => {
+                targetOps = targetOps.filter(op => {
                     const comp = companies.find(c => c.id === op.companyId) || { name: '' };
                     return comp.name.toLowerCase().includes(query) || 
                            (op.notes && op.notes.toLowerCase().includes(query)) ||
                            (op.targetContact && op.targetContact.toLowerCase().includes(query)) ||
+                           (op.responseType && op.responseType.toLowerCase().includes(query)) ||
                            (op.type && op.type.toLowerCase().includes(query));
                 });
             }
 
-            badge.textContent = operations.filter(o => o.hasResponse === 'Hayır').length;
-
-            if (pendingOps.length === 0) {
-                container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">Aramanıza uygun veya geri dönüş bekleyen operasyon kaydı bulunmuyor.</div>`;
+            if (targetOps.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">${activeAlertTab === 'pending' ? 'Geri dönüş bekleyen kayıt bulunmuyor.' : 'Geri dönüş alınan kayıt bulunmuyor.'}</div>`;
                 return;
             }
 
-            pendingOps.forEach(op => {
+            targetOps.forEach(op => {
                 const comp = companies.find(c => c.id === op.companyId) || { name: 'Bilinmeyen Firma' };
                 const daysDiff = Math.floor((new Date() - new Date(op.date)) / (1000 * 60 * 60 * 24));
+                const respCls = classifyResponseType(op.responseType);
+
+                let borderBgClass = 'border-rose-200 bg-rose-50/60';
+                let badgeStyle = 'bg-rose-100 text-rose-700 border-rose-200';
+                let statusBadgeText = `${daysDiff} Gün Geçti`;
+
+                if (activeAlertTab === 'responded') {
+                    if (respCls === 'positive' || respCls === 'sample') {
+                        borderBgClass = 'border-emerald-200 bg-emerald-50/60';
+                        badgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                        statusBadgeText = respCls === 'sample' ? '📦 Numune İstendi' : '👍 Olumlu Dönüş';
+                    } else if (respCls === 'negative') {
+                        borderBgClass = 'border-rose-200 bg-rose-50/60';
+                        badgeStyle = 'bg-rose-100 text-rose-800 border-rose-200';
+                        statusBadgeText = '👎 Olumsuz';
+                    } else {
+                        borderBgClass = 'border-slate-200 bg-slate-50';
+                        badgeStyle = 'bg-slate-100 text-slate-700 border-slate-200';
+                        statusBadgeText = op.responseType || 'Yanıt Alındı';
+                    }
+                }
 
                 const div = document.createElement('div');
-                div.className = 'p-3 rounded-xl border border-rose-200 bg-rose-50/60 shadow-sm hover:shadow transition flex flex-col gap-1.5 text-xs';
+                div.className = `p-3 rounded-xl border ${borderBgClass} shadow-sm hover:shadow transition flex flex-col gap-1.5 text-xs`;
                 div.innerHTML = `
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                            <span class="w-2 h-2 rounded-full ${activeAlertTab === 'pending' ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}"></span>
                             <span class="font-bold text-slate-900 text-xs">${comp.name}</span>
                         </div>
-                        <span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200">
-                            ${daysDiff} Gün Geçti
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeStyle}">
+                            ${statusBadgeText}
                         </span>
                     </div>
                     
@@ -1847,11 +1983,11 @@
                         <span class="text-slate-500 truncate max-w-[150px]" title="${op.targetContact || ''}"><b>Kanal:</b> ${op.targetContact || 'Yetkili'}</span>
                     </div>
 
-                    ${op.notes ? `<div class="text-slate-600 italic text-[11px] bg-white/80 p-2 rounded-lg border border-rose-100 whitespace-pre-line leading-relaxed">${op.notes}</div>` : ''}
+                    ${op.notes ? `<div class="text-slate-600 italic text-[11px] bg-white/80 p-2 rounded-lg border border-slate-200 whitespace-pre-line leading-relaxed">${op.notes}</div>` : ''}
 
-                    <div class="pt-1 flex items-center justify-between border-t border-rose-100 mt-0.5">
+                    <div class="pt-1 flex items-center justify-between border-t border-slate-200 mt-0.5">
                         <button onclick="editOperation('${op.id}')" class="text-indigo-600 hover:text-indigo-800 font-bold text-[11px] flex items-center gap-1">
-                            <i data-lucide="edit-3" class="w-3 h-3"></i> Güncelle / Cevap Gir
+                            <i data-lucide="edit-3" class="w-3 h-3"></i> Detay / Güncelle
                         </button>
                         <button onclick="openCompanyDetail('${comp.id}')" class="text-brand-600 hover:underline font-semibold text-[11px] flex items-center gap-0.5">
                             Firma Kartı <i data-lucide="arrow-right" class="w-3 h-3"></i>
