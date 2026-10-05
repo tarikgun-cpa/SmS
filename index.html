@@ -265,6 +265,18 @@
                             <option value="Atanmadı">Atanmadı</option>
                         </select>
 
+                        <select id="filterOperation" onchange="renderCompanies()" class="border border-slate-200 rounded-lg text-xs px-3 py-2 bg-slate-50 font-medium focus:outline-none text-indigo-700">
+                            <option value="">Tüm Operasyonlar</option>
+                            <option value="has_op">Operasyon Yapılan</option>
+                            <option value="no_op">Operasyon Yapılmayan</option>
+                        </select>
+
+                        <select id="filterResponse" onchange="renderCompanies()" class="border border-slate-200 rounded-lg text-xs px-3 py-2 bg-slate-50 font-medium focus:outline-none text-emerald-700">
+                            <option value="">Tüm Cevap Durumları</option>
+                            <option value="has_resp">Cevap Gelen</option>
+                            <option value="no_resp">Cevap Gelmeyen / Bekleyen</option>
+                        </select>
+
                         <select id="filterSector" onchange="renderCompanies()" class="border border-slate-200 rounded-lg text-xs px-3 py-2 bg-slate-50 focus:outline-none">
                             <option value="">Tüm Sektörler / Segmentler</option>
                             <option value="Alüminyum Haddeleme">Alüminyum Haddeleme</option>
@@ -1277,6 +1289,8 @@
             const sectorFilter = document.getElementById('filterSector').value;
             const statusFilter = document.getElementById('filterStatus').value;
             const assigneeFilter = document.getElementById('filterAssignee') ? document.getElementById('filterAssignee').value : '';
+            const operationFilter = document.getElementById('filterOperation') ? document.getElementById('filterOperation').value : '';
+            const responseFilter = document.getElementById('filterResponse') ? document.getElementById('filterResponse').value : '';
 
             grid.innerHTML = '';
 
@@ -1292,7 +1306,19 @@
                                        cAssigneeFormatted === assigneeFilter || 
                                        (assigneeFilter === 'Atanmadı' && (!c.assignee || c.assignee === 'Atanmadı'));
 
-                return matchesSearch && matchesSector && matchesStatus && matchesAssignee;
+                const compOps = operations.filter(o => o.companyId === c.id);
+                const hasOps = compOps.length > 0;
+                const hasResp = compOps.some(o => o.hasResponse === 'Evet');
+
+                let matchesOp = true;
+                if (operationFilter === 'has_op') matchesOp = hasOps;
+                else if (operationFilter === 'no_op') matchesOp = !hasOps;
+
+                let matchesResp = true;
+                if (responseFilter === 'has_resp') matchesResp = hasResp;
+                else if (responseFilter === 'no_resp') matchesResp = !hasResp;
+
+                return matchesSearch && matchesSector && matchesStatus && matchesAssignee && matchesOp && matchesResp;
             });
 
             if (filtered.length === 0) {
