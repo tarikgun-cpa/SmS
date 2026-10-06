@@ -26,6 +26,16 @@
         th:last-child, td:last-child { display: none !important; }
         .print-card { border: 1px solid #cbd5e1 !important; }
         .max-h-28 { max-height: none !important; overflow: visible !important; }
+
+        /* Yazdırma Esnasında Notların Kesilmesini Engeller */
+        .truncate { 
+            white-space: normal !important; 
+            text-overflow: clip !important; 
+            overflow: visible !important; 
+        }
+        .max-w-xs { 
+            max-width: none !important; 
+        }
     }
 </style>
 
